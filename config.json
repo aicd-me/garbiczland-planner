@@ -1,0 +1,99 @@
+{
+  "backgroundImage": "garbiczland.png",
+  "zones": [
+    {
+      "id": "zone_1",
+      "name": "Member 1 (Hellgelb)",
+      "color": "#FFFFAA",
+      "active": true,
+      "activeInScenarios": ["festival", "member1"]
+    },
+    {
+      "id": "zone_2",
+      "name": "Member 2 (Gelb)",
+      "color": "#FFFF00",
+      "active": true,
+      "activeInScenarios": ["festival", "member2"]
+    },
+    {
+      "id": "zone_3",
+      "name": "Member 3 (Dunkel Gelb)",
+      "color": "#B2B200",
+      "active": true,
+      "activeInScenarios": ["festival", "member3"]
+    },
+    {
+      "id": "zone_4",
+      "name": "Shareholder (Orange)",
+      "color": "#FFA500",
+      "active": true,
+      "activeInScenarios": ["festival", "all_year"]
+    },
+    {
+      "id": "zone_5",
+      "name": "Backstage (Schwarz)",
+      "color": "#000000",
+      "active": true,
+      "activeInScenarios": ["festival", "all_year", "other_events"]
+    },
+    {
+      "id": "zone_6",
+      "name": "Event (Rot)",
+      "color": "#FF0000",
+      "active": true,
+      "activeInScenarios": ["festival", "other_events"]
+    },
+    {
+      "id": "zone_7",
+      "name": "Camping (Pink)",
+      "color": "#FF66FF",
+      "active": true,
+      "activeInScenarios": ["festival"]
+    },
+    {
+      "id": "zone_8",
+      "name": "Spa (Blau)",
+      "color": "#0000FF",
+      "active": true,
+      "activeInScenarios": ["all_year"]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "festival",
+      "name": "Festival",
+      "description": "Main festival layout",
+      "active": true
+    },
+    {
+      "id": "all_year",
+      "name": "All Year",
+      "description": "Year-round access areas",
+      "active": false
+    },
+    {
+      "id": "member1",
+      "name": "Member 1",
+      "description": "Member 1 specific areas",
+      "active": false
+    },
+    {
+      "id": "member2",
+      "name": "Member 2",
+      "description": "Member 2 specific areas",
+      "active": false
+    },
+    {
+      "id": "member3",
+      "name": "Member 3",
+      "description": "Member 3 specific areas",
+      "active": false
+    },
+    {
+      "id": "other_events",
+      "name": "Other Events",
+      "description": "Layout for other events",
+      "active": false
+    }
+  ]
+}

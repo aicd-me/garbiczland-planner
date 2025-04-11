@@ -187,7 +187,13 @@
         <!-- Header Controls -->
         <header class="bg-white shadow-sm p-3 flex items-center justify-between">
             <div class="text-xl font-bold text-gray-800">Garbiczland Planner</div>
-            <div class="flex">
+            <div class="flex items-center">
+                <div class="mr-4 flex items-center">
+                    <span class="text-sm text-gray-600 mr-2">Mode:</span>
+                    <button id="edit-shapes-btn" class="tool-button">
+                        <i class="fas fa-draw-polygon"></i> Draw Mode
+                    </button>
+                </div>
                 <button id="upload-bg-btn" class="tool-button mr-2">
                     <i class="fas fa-image"></i> Upload Background
                 </button>
@@ -224,9 +230,6 @@
                 <button id="undo-btn" class="tool-button mb-2 w-full">
                     <i class="fas fa-undo"></i> Undo (Ctrl+Z)
                 </button>
-                <button id="edit-shapes-btn" class="tool-button mb-2 w-full">
-                    <i class="fas fa-edit"></i> Edit Shapes
-                </button>
                 <div class="text-xs text-gray-500 mt-4">
                     <p>• Click on the map to add points</p>
                     <p>• Press Enter to complete a shape</p>
@@ -254,6 +257,11 @@
                 <input type="color" id="zone-color">
                 <div class="help-text">The system will ensure this color is unique</div>
             </div>
+            <div class="input-group">
+                <label>Active in Scenarios:</label>
+                <div id="scenario-checkboxes" class="mt-2 space-y-2"></div>
+                <div class="help-text">Select which scenarios this zone should appear in</div>
+            </div>
             <div class="flex justify-end mt-4">
                 <button id="cancel-zone-btn" class="tool-button bg-gray-200 mr-2">Cancel</button>
                 <button id="save-zone-btn" class="tool-button bg-blue-500 text-white hover:bg-blue-600">Save</button>
@@ -267,6 +275,7 @@
             zoneItems: [],
             scenarios: [],
             currentZoneItem: null,
+            currentScenario: null,  // Track the currently selected scenario
             currentShape: [],
             shapes: [],
             selectedShape: null,
@@ -277,10 +286,11 @@
             undoStack: [],
             backgroundImage: null,
             editingItemId: null,
+            configLoaded: false,  // Track if config has been loaded
             
             // Color palette for auto-generating unique colors
             colorPalette: [
-                '#FFFFAA', '#FFFF00', '#B2B200', '#FFA500', '#000000', 
+                '#FFFFAA', '#FFFF00', '#B2B200', '#FFA500', '#000000',
                 '#FF0000', '#FF66FF', '#0000FF', '#00FF00', '#800080',
                 '#008000', '#808000', '#800000', '#00FFFF', '#FFC0CB',
                 '#A52A2A', '#808080', '#4B0082', '#FFD700', '#7FFFD4'
@@ -306,42 +316,257 @@
         const cancelZoneBtn = document.getElementById('cancel-zone-btn');
         const modalClose = document.querySelector('.modal-close');
         
-        // Initialize default zone items
-        function initializeDefaultZoneItems() {
-            const defaultItems = [
-                { id: generateId(), name: 'Member 1 (Hellgelb)', color: '#FFFFAA', active: true },
-                { id: generateId(), name: 'Member 2 (Gelb)', color: '#FFFF00', active: true },
-                { id: generateId(), name: 'Member 3 (Dunkel Gelb)', color: '#B2B200', active: true },
-                { id: generateId(), name: 'Shareholder (Orange)', color: '#FFA500', active: true },
-                { id: generateId(), name: 'Backstage (Schwarz)', color: '#000000', active: true },
-                { id: generateId(), name: 'Event (Rot)', color: '#FF0000', active: true },
-                { id: generateId(), name: 'Camping (Pink)', color: '#FF66FF', active: true },
-                { id: generateId(), name: 'Spa (Blau)', color: '#0000FF', active: true }
-            ];
-            
-            defaultItems.forEach(item => {
-                appState.zoneItems.push(item);
-                appState.usedColors.push(item.color);
-            });
+        // Load configuration from config.json
+        async function loadConfiguration() {
+            try {
+                // Try to load the embedded config first
+                const embeddedConfig = {
+                    "backgroundImage": "garbiczland.png",
+                    "zones": [
+                        {
+                            "id": "zone_1",
+                            "name": "Member 1 (Hellgelb)",
+                            "color": "#FFFFAA",
+                            "active": true,
+                            "activeInScenarios": ["festival", "member1"]
+                        },
+                        {
+                            "id": "zone_2",
+                            "name": "Member 2 (Gelb)",
+                            "color": "#FFFF00",
+                            "active": true,
+                            "activeInScenarios": ["festival", "member2"]
+                        },
+                        {
+                            "id": "zone_3",
+                            "name": "Member 3 (Dunkel Gelb)",
+                            "color": "#B2B200",
+                            "active": true,
+                            "activeInScenarios": ["festival", "member3"]
+                        },
+                        {
+                            "id": "zone_4",
+                            "name": "Shareholder (Orange)",
+                            "color": "#FFA500",
+                            "active": true,
+                            "activeInScenarios": ["festival", "all_year"]
+                        },
+                        {
+                            "id": "zone_5",
+                            "name": "Backstage (Schwarz)",
+                            "color": "#000000",
+                            "active": true,
+                            "activeInScenarios": ["festival", "all_year", "other_events"]
+                        },
+                        {
+                            "id": "zone_6",
+                            "name": "Event (Rot)",
+                            "color": "#FF0000",
+                            "active": true,
+                            "activeInScenarios": ["festival", "other_events"]
+                        },
+                        {
+                            "id": "zone_7",
+                            "name": "Camping (Pink)",
+                            "color": "#FF66FF",
+                            "active": true,
+                            "activeInScenarios": ["festival"]
+                        },
+                        {
+                            "id": "zone_8",
+                            "name": "Spa (Blau)",
+                            "color": "#0000FF",
+                            "active": true,
+                            "activeInScenarios": ["all_year"]
+                        }
+                    ],
+                    "scenarios": [
+                        {
+                            "id": "festival",
+                            "name": "Festival",
+                            "description": "Main festival layout",
+                            "active": true
+                        },
+                        {
+                            "id": "all_year",
+                            "name": "All Year",
+                            "description": "Year-round access areas",
+                            "active": false
+                        },
+                        {
+                            "id": "member1",
+                            "name": "Member 1",
+                            "description": "Member 1 specific areas",
+                            "active": false
+                        },
+                        {
+                            "id": "member2",
+                            "name": "Member 2",
+                            "description": "Member 2 specific areas",
+                            "active": false
+                        },
+                        {
+                            "id": "member3",
+                            "name": "Member 3",
+                            "description": "Member 3 specific areas",
+                            "active": false
+                        },
+                        {
+                            "id": "other_events",
+                            "name": "Other Events",
+                            "description": "Layout for other events",
+                            "active": false
+                        }
+                    ]
+                };
+                
+                // Try to load the external config file (may fail due to CORS when running from file://)
+                try {
+                    const response = await fetch('config.json');
+                    if (response.ok) {
+                        const config = await response.json();
+                        console.log('Loaded external config.json');
+                        
+                        // Load background image
+                        if (config.backgroundImage) {
+                            loadBackgroundImage(config.backgroundImage);
+                        }
+                        
+                        // Set configLoaded flag
+                        appState.configLoaded = true;
+                        
+                        return config;
+                    }
+                } catch (fetchError) {
+                    console.warn('Could not load external config.json, using embedded config:', fetchError);
+                }
+                
+                // If external config failed, use the embedded config
+                console.log('Using embedded config');
+                
+                // Load background image
+                if (embeddedConfig.backgroundImage) {
+                    loadBackgroundImage(embeddedConfig.backgroundImage);
+                }
+                
+                // Set configLoaded flag
+                appState.configLoaded = true;
+                
+                return embeddedConfig;
+            } catch (error) {
+                console.error('Error loading configuration:', error);
+                return null;
+            }
+        }
+        
+        // Helper function to load background image
+        function loadBackgroundImage(src) {
+            const img = new Image();
+            img.onload = function() {
+                appState.backgroundImage = img;
+                canvas.width = img.width > 1000 ? 1000 : img.width;
+                canvas.height = canvas.width * (img.height / img.width);
+                redrawCanvas();
+            };
+            img.src = src;
+        }
+        
+        // Initialize zone items from config
+        function initializeDefaultZoneItems(config) {
+            if (config && config.zones && config.zones.length > 0) {
+                config.zones.forEach(item => {
+                    const zoneItem = {
+                        id: item.id || generateId(),
+                        name: item.name,
+                        color: item.color,
+                        active: item.active !== undefined ? item.active : true,
+                        activeInScenarios: item.activeInScenarios || []
+                    };
+                    
+                    appState.zoneItems.push(zoneItem);
+                    appState.usedColors.push(item.color);
+                });
+            } else {
+                // Fallback to hardcoded defaults if config is not available
+                const defaultItems = [
+                    { id: generateId(), name: 'Member 1 (Hellgelb)', color: '#FFFFAA', active: true, activeInScenarios: ['festival', 'member1'] },
+                    { id: generateId(), name: 'Member 2 (Gelb)', color: '#FFFF00', active: true, activeInScenarios: ['festival', 'member2'] },
+                    { id: generateId(), name: 'Member 3 (Dunkel Gelb)', color: '#B2B200', active: true, activeInScenarios: ['festival', 'member3'] },
+                    { id: generateId(), name: 'Shareholder (Orange)', color: '#FFA500', active: true, activeInScenarios: ['festival', 'all_year'] },
+                    { id: generateId(), name: 'Backstage (Schwarz)', color: '#000000', active: true, activeInScenarios: ['festival', 'all_year', 'other_events'] },
+                    { id: generateId(), name: 'Event (Rot)', color: '#FF0000', active: true, activeInScenarios: ['festival', 'other_events'] },
+                    { id: generateId(), name: 'Camping (Pink)', color: '#FF66FF', active: true, activeInScenarios: ['festival'] },
+                    { id: generateId(), name: 'Spa (Blau)', color: '#0000FF', active: true, activeInScenarios: ['all_year'] }
+                ];
+                
+                defaultItems.forEach(item => {
+                    appState.zoneItems.push(item);
+                    appState.usedColors.push(item.color);
+                });
+            }
         }
 
-        // Initialize default scenarios
-        function initializeDefaultScenarios() {
-            const defaultScenarios = [
-                { id: generateId(), name: 'Festival', zones: {} },
-                { id: generateId(), name: 'All Year', zones: {} },
-                { id: generateId(), name: 'Member 1', zones: {} },
-                { id: generateId(), name: 'Member 2', zones: {} },
-                { id: generateId(), name: 'Member 3', zones: {} },
-                { id: generateId(), name: 'Other Events', zones: {} }
-            ];
-
-            defaultScenarios.forEach(scenario => {
-                appState.zoneItems.forEach(zone => {
-                    scenario.zones[zone.id] = { visible: true };
+        // Initialize scenarios from config
+        function initializeDefaultScenarios(config) {
+            if (config && config.scenarios && config.scenarios.length > 0) {
+                config.scenarios.forEach(item => {
+                    const scenario = {
+                        id: item.id || generateId(),
+                        name: item.name,
+                        description: item.description || '',
+                        active: item.active !== undefined ? item.active : false,
+                        zones: {}
+                    };
+                    
+                    // Initialize zones visibility
+                    appState.zoneItems.forEach(zone => {
+                        scenario.zones[zone.id] = {
+                            visible: zone.activeInScenarios.includes(scenario.id)
+                        };
+                    });
+                    
+                    appState.scenarios.push(scenario);
+                    
+                    // Set the first active scenario as current
+                    if (item.active && !appState.currentScenario) {
+                        appState.currentScenario = scenario.id;
+                    }
                 });
-                appState.scenarios.push(scenario);
-            });
+                
+                // If no scenario is active, set the first one as active
+                if (!appState.currentScenario && appState.scenarios.length > 0) {
+                    appState.currentScenario = appState.scenarios[0].id;
+                    appState.scenarios[0].active = true;
+                }
+            } else {
+                // Fallback to hardcoded defaults if config is not available
+                const defaultScenarios = [
+                    { id: 'festival', name: 'Festival', description: 'Main festival layout', active: true },
+                    { id: 'all_year', name: 'All Year', description: 'Year-round access areas', active: false },
+                    { id: 'member1', name: 'Member 1', description: 'Member 1 specific areas', active: false },
+                    { id: 'member2', name: 'Member 2', description: 'Member 2 specific areas', active: false },
+                    { id: 'member3', name: 'Member 3', description: 'Member 3 specific areas', active: false },
+                    { id: 'other_events', name: 'Other Events', description: 'Layout for other events', active: false }
+                ];
+
+                defaultScenarios.forEach(scenario => {
+                    const newScenario = { ...scenario, zones: {} };
+                    
+                    // Initialize zones visibility based on activeInScenarios
+                    appState.zoneItems.forEach(zone => {
+                        newScenario.zones[zone.id] = {
+                            visible: zone.activeInScenarios.includes(scenario.id)
+                        };
+                    });
+                    
+                    appState.scenarios.push(newScenario);
+                });
+                
+                // Set the first scenario as current if none is set
+                if (!appState.currentScenario && appState.scenarios.length > 0) {
+                    appState.currentScenario = appState.scenarios[0].id;
+                }
+            }
         }
         
         // Generate a unique ID
@@ -369,7 +594,15 @@
         function renderZoneItems() {
             zoneContainer.innerHTML = '';
             
+            // Get current scenario
+            const currentScenario = appState.scenarios.find(s => s.id === appState.currentScenario);
+            if (!currentScenario) return;
+            
+            // Filter zones to show only those active in the current scenario
             appState.zoneItems.forEach(item => {
+                // Skip zones not active in the current scenario
+                if (!item.activeInScenarios.includes(currentScenario.id)) return;
+                
                 const zoneItem = document.createElement('div');
                 zoneItem.className = `zone-item ${appState.currentZoneItem === item.id ? 'selected' : ''} ${!item.active ? 'deactivated' : ''}`;
                 zoneItem.dataset.id = item.id;
@@ -439,26 +672,55 @@
         function renderScenarios() {
             scenariosContainer.innerHTML = '';
             
+            // Create header for scenario selection
+            const scenarioHeader = document.createElement('div');
+            scenarioHeader.className = 'mb-4';
+            scenarioHeader.innerHTML = '<p class="text-sm text-gray-600 mb-2">Select active scenario:</p>';
+            scenariosContainer.appendChild(scenarioHeader);
+            
             appState.scenarios.forEach(scenario => {
                 const scenarioItem = document.createElement('div');
-                scenarioItem.className = 'scenario-item';
+                const isActive = scenario.id === appState.currentScenario;
+                
+                scenarioItem.className = `scenario-item ${isActive ? 'bg-blue-100 font-semibold' : ''}`;
+                scenarioItem.dataset.id = scenario.id;
                 
                 const nameSpan = document.createElement('span');
                 nameSpan.textContent = scenario.name;
                 
+                const controls = document.createElement('div');
+                controls.className = 'flex items-center';
+                
                 const toggleBtn = document.createElement('button');
                 toggleBtn.innerHTML = '<i class="fas fa-eye"></i>';
-                toggleBtn.className = 'zone-control';
+                toggleBtn.className = 'zone-control mr-2';
                 toggleBtn.title = 'Toggle Visibility';
-                toggleBtn.onclick = () => {
+                toggleBtn.onclick = (e) => {
+                    e.stopPropagation();
                     toggleScenarioVisibility(scenario.id);
                 };
                 
+                controls.appendChild(toggleBtn);
+                
                 scenarioItem.appendChild(nameSpan);
-                scenarioItem.appendChild(toggleBtn);
+                scenarioItem.appendChild(controls);
+                
+                // Add click handler to select this scenario
+                scenarioItem.addEventListener('click', () => {
+                    setCurrentScenario(scenario.id);
+                });
                 
                 scenariosContainer.appendChild(scenarioItem);
             });
+            
+            // Add description for the current scenario
+            const currentScenario = appState.scenarios.find(s => s.id === appState.currentScenario);
+            if (currentScenario && currentScenario.description) {
+                const descriptionEl = document.createElement('div');
+                descriptionEl.className = 'mt-4 text-sm text-gray-600';
+                descriptionEl.textContent = currentScenario.description;
+                scenariosContainer.appendChild(descriptionEl);
+            }
         }
         
         // Set current zone item for drawing
@@ -515,6 +777,29 @@
             }
         }
         
+        // Set current scenario
+        function setCurrentScenario(id) {
+            // Deactivate current scenario
+            if (appState.currentScenario) {
+                const oldScenario = appState.scenarios.find(s => s.id === appState.currentScenario);
+                if (oldScenario) {
+                    oldScenario.active = false;
+                }
+            }
+            
+            // Activate new scenario
+            const newScenario = appState.scenarios.find(s => s.id === id);
+            if (newScenario) {
+                newScenario.active = true;
+                appState.currentScenario = id;
+                
+                // Update UI
+                renderScenarios();
+                renderZoneItems(); // Re-render zones to show only those active in this scenario
+                redrawCanvas();
+            }
+        }
+        
         // Toggle scenario visibility
         function toggleScenarioVisibility(id) {
             const scenario = appState.scenarios.find(s => s.id === id);
@@ -533,16 +818,50 @@
             zoneNameInput.value = '';
             zoneColorInput.value = getUniqueColor();
             appState.editingItemId = null;
+            
+            // Populate scenario checkboxes
+            populateScenarioCheckboxes([]);
+            
             zoneModal.style.display = 'flex';
         }
-        
         // Open modal to edit an existing zone item
         function openEditZoneModal(item) {
             modalTitle.textContent = 'Edit Zone Item';
             zoneNameInput.value = item.name;
             zoneColorInput.value = item.color;
             appState.editingItemId = item.id;
+            
+            // Populate scenario checkboxes with selected scenarios
+            populateScenarioCheckboxes(item.activeInScenarios || []);
+            
             zoneModal.style.display = 'flex';
+        }
+        
+        // Populate scenario checkboxes in the zone modal
+        function populateScenarioCheckboxes(selectedScenarios) {
+            const checkboxContainer = document.getElementById('scenario-checkboxes');
+            checkboxContainer.innerHTML = '';
+            
+            appState.scenarios.forEach(scenario => {
+                const checkboxDiv = document.createElement('div');
+                checkboxDiv.className = 'flex items-center';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `scenario-${scenario.id}`;
+                checkbox.className = 'mr-2';
+                checkbox.checked = selectedScenarios.includes(scenario.id);
+                checkbox.value = scenario.id;
+                
+                const label = document.createElement('label');
+                label.htmlFor = `scenario-${scenario.id}`;
+                label.textContent = scenario.name;
+                label.className = 'text-sm';
+                
+                checkboxDiv.appendChild(checkbox);
+                checkboxDiv.appendChild(label);
+                checkboxContainer.appendChild(checkboxDiv);
+            });
         }
         
         // Close the zone modal
@@ -560,13 +879,27 @@
                 return;
             }
             
+            // Get selected scenarios
+            const selectedScenarios = [];
+            const checkboxes = document.querySelectorAll('#scenario-checkboxes input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    selectedScenarios.push(checkbox.value);
+                }
+            });
+            
+            if (selectedScenarios.length === 0) {
+                alert('Please select at least one scenario for this zone.');
+                return;
+            }
+            
             if (appState.editingItemId) {
                 const itemIndex = appState.zoneItems.findIndex(item => item.id === appState.editingItemId);
                 
                 if (itemIndex !== -1) {
                     const oldColor = appState.zoneItems[itemIndex].color;
                     if (oldColor !== color) {
-                        const colorInUse = appState.zoneItems.some(item => 
+                        const colorInUse = appState.zoneItems.some(item =>
                             item.id !== appState.editingItemId && item.color === color
                         );
                         
@@ -580,12 +913,20 @@
                     
                     appState.zoneItems[itemIndex].name = name;
                     appState.zoneItems[itemIndex].color = color;
+                    appState.zoneItems[itemIndex].activeInScenarios = selectedScenarios;
                     
                     // Update shapes with this zone item
                     appState.shapes.forEach(shape => {
                         if (shape.zoneItemId === appState.editingItemId) {
                             shape.color = color;
                         }
+                    });
+                    
+                    // Update scenario zones
+                    appState.scenarios.forEach(scenario => {
+                        scenario.zones[appState.editingItemId] = {
+                            visible: selectedScenarios.includes(scenario.id)
+                        };
                     });
                 }
             } else {
@@ -598,15 +939,18 @@
                     id: generateId(),
                     name: name,
                     color: color,
-                    active: true
+                    active: true,
+                    activeInScenarios: selectedScenarios
                 };
                 
                 appState.zoneItems.push(newItem);
                 appState.usedColors.push(color);
                 
-                // Add to all scenarios
+                // Add to scenarios
                 appState.scenarios.forEach(scenario => {
-                    scenario.zones[newItem.id] = { visible: true };
+                    scenario.zones[newItem.id] = {
+                        visible: selectedScenarios.includes(scenario.id)
+                    };
                 });
             }
             
@@ -1088,18 +1432,29 @@
             
             // Get visible shapes based on scenarios
             const visibleZoneIds = {};
+            
+            // First, mark all zones as not visible
             appState.zoneItems.forEach(item => {
-                visibleZoneIds[item.id] = item.active;
+                visibleZoneIds[item.id] = false;
             });
             
-            // Apply scenario visibility settings
-            appState.scenarios.forEach(scenario => {
-                for (const zoneId in scenario.zones) {
-                    if (!scenario.zones[zoneId].visible) {
+            // Then, make zones visible if they are active and in the current scenario
+            const currentScenario = appState.scenarios.find(s => s.id === appState.currentScenario);
+            if (currentScenario) {
+                appState.zoneItems.forEach(item => {
+                    // Check if zone is active and in the current scenario
+                    if (item.active && item.activeInScenarios.includes(currentScenario.id)) {
+                        visibleZoneIds[item.id] = true;
+                    }
+                });
+                
+                // Apply scenario visibility settings
+                for (const zoneId in currentScenario.zones) {
+                    if (!currentScenario.zones[zoneId].visible) {
                         visibleZoneIds[zoneId] = false;
                     }
                 }
-            });
+            }
             
             // Draw all completed shapes
             appState.shapes.forEach(shape => {
@@ -1167,14 +1522,17 @@
         }
         
         // Initialize application
-        function initApp() {
+        async function initApp() {
             // Set up canvas and initial state
             canvas.width = 1000;
             canvas.height = 800;
             
+            // Load configuration
+            const config = await loadConfiguration();
+            
             // Initialize default data
-            initializeDefaultZoneItems();
-            initializeDefaultScenarios();
+            initializeDefaultZoneItems(config);
+            initializeDefaultScenarios(config);
             
             // Render UI components
             renderZoneItems();
@@ -1228,11 +1586,40 @@
                     const parsedData = JSON.parse(savedData);
                     
                     if (parsedData.zoneItems && parsedData.zoneItems.length > 0) {
+                        // Add activeInScenarios if missing
+                        parsedData.zoneItems.forEach(item => {
+                            if (!item.activeInScenarios) {
+                                item.activeInScenarios = [];
+                                // Default to all scenarios if not specified
+                                appState.scenarios.forEach(scenario => {
+                                    if (scenario.zones[item.id]?.visible) {
+                                        item.activeInScenarios.push(scenario.id);
+                                    }
+                                });
+                            }
+                        });
+                        
                         appState.zoneItems = parsedData.zoneItems;
                     }
                     
                     if (parsedData.scenarios && parsedData.scenarios.length > 0) {
+                        // Add active property if missing
+                        parsedData.scenarios.forEach(scenario => {
+                            if (scenario.active === undefined) {
+                                scenario.active = false;
+                            }
+                        });
+                        
                         appState.scenarios = parsedData.scenarios;
+                        
+                        // Set current scenario
+                        const activeScenario = appState.scenarios.find(s => s.active);
+                        if (activeScenario) {
+                            appState.currentScenario = activeScenario.id;
+                        } else if (appState.scenarios.length > 0) {
+                            appState.currentScenario = appState.scenarios[0].id;
+                            appState.scenarios[0].active = true;
+                        }
                     }
                     
                     if (parsedData.shapes) {
@@ -1241,6 +1628,10 @@
                     
                     if (parsedData.usedColors) {
                         appState.usedColors = parsedData.usedColors;
+                    }
+                    
+                    if (parsedData.currentScenario) {
+                        appState.currentScenario = parsedData.currentScenario;
                     }
                     
                     if (parsedData.backgroundImageUrl) {
@@ -1271,6 +1662,7 @@
                     scenarios: appState.scenarios,
                     shapes: appState.shapes,
                     usedColors: appState.usedColors,
+                    currentScenario: appState.currentScenario,
                     backgroundImageUrl: appState.backgroundImage ? appState.backgroundImage.src : null
                 };
                 
@@ -1279,7 +1671,11 @@
         }
         
         // Initialize the application when the document is loaded
-        document.addEventListener('DOMContentLoaded', initApp);
+        document.addEventListener('DOMContentLoaded', () => {
+            initApp().catch(error => {
+                console.error('Error initializing app:', error);
+            });
+        });
     </script>
 </body>
 </html>
