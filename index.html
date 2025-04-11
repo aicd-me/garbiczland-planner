@@ -507,6 +507,9 @@
                 canvas.width = img.width > 1000 ? 1000 : img.width;
                 canvas.height = canvas.width * (img.height / img.width);
                 redrawCanvas();
+                // Enable download button after image is loaded
+                downloadPngBtn.disabled = false;
+                downloadPngBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             };
             img.src = src;
         }
@@ -1465,6 +1468,9 @@
                         canvas.height = canvasHeight;
                         
                         redrawCanvas();
+                        // Enable download button after image is loaded
+                        downloadPngBtn.disabled = false;
+                        downloadPngBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                     };
                     img.src = e.target.result;
                 };
@@ -1725,6 +1731,10 @@
             // Set up canvas and initial state
             canvas.width = 1000;
             canvas.height = 800;
+
+            // Disable download button until background image is loaded
+            downloadPngBtn.disabled = true;
+            downloadPngBtn.classList.add('opacity-50', 'cursor-not-allowed');
             
             // Load configuration
             const config = await loadConfiguration();
@@ -1846,6 +1856,9 @@
                             canvas.width = img.width > 1000 ? 1000 : img.width;
                             canvas.height = canvas.width * (img.height / img.width);
                             redrawCanvas();
+                            // Enable download button after image is loaded
+                            downloadPngBtn.disabled = false;
+                            downloadPngBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                         };
                         img.src = parsedData.backgroundImageUrl;
                     }
