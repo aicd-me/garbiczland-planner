@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Garbiczland Planner</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            background-color: #ffffff;
+        }
+        
+        .color-swatch {
+            width: 25px;
+            height: 25px;
+            display: inline-block;
+            border: 1px solid #333;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+        
+        .zone-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background-color 0.2s;
+        }
+        
+        .zone-item:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+        
+        .zone-item.selected {
+            background-color: rgba(0,0,0,0.1);
+            font-weight: bold;
+        }
+        
+        .deactivated {
+            opacity: 0.5;
+            text-decoration: line-through;
+        }
+        
+        #main-canvas {
+            cursor: crosshair;
+            border: 1px solid #ddd;
+            background-color: #ffffff;
+        }
+        
+        .tool-button {
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .tool-button:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .tool-button i {
+            margin-right: 5px;
+        }
+        
+        .sidebar {
+            height: calc(100vh - 60px);
+            overflow-y: auto;
+            padding: 15px;
+            background-color: #ffffff;
+            border: 1px solid #eaeaea;
+        }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .modal-close {
+            cursor: pointer;
+            font-size: 20px;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+        .zone-controls {
+            display: flex;
+            justify-content: flex-end;
+            gap: 5px;
+        }
+        
+        .zone-control {
+            cursor: pointer;
+            padding: 3px;
+            color: #666;
+        }
+        
+        .zone-control:hover {
+            color: #000;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .scenario-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .scenario-item:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eaeaea;
+        }
+    </style>
+</head>
+<body>
+    <div class="flex flex-col h-screen">
+        <!-- Header Controls -->
+        <header class="bg-white shadow-sm p-3 flex items-center justify-between">
+            <div class="text-xl font-bold text-gray-800">Garbiczland Planner</div>
+            <div class="flex">
+                <button id="upload-bg-btn" class="tool-button mr-2">
+                    <i class="fas fa-image"></i> Upload Background
+                </button>
+                <button id="download-png-btn" class="tool-button">
+                    <i class="fas fa-download"></i> Download as PNG
+                </button>
+            </div>
+        </header>
+        
+        <!-- Main Content Area -->
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Left Sidebar - Zone Items -->
+            <div class="sidebar bg-white shadow-sm w-1/4 border-r border-gray-200">
+                <h2 class="section-title">Zones</h2>
+                <button id="add-zone-btn" class="tool-button mb-4 w-full">
+                    <i class="fas fa-plus"></i> Add New Zone Item
+                </button>
+                <div id="zone-container" class="space-y-2"></div>
+                <div class="text-xs text-gray-500 mt-4">
+                    <p>Click on a zone to select it for drawing</p>
+                </div>
+            </div>
+            
+            <!-- Main Canvas Area -->
+            <div class="flex-1 flex justify-center items-center bg-gray-50 p-4 overflow-auto">
+                <canvas id="main-canvas" width="1000" height="800"></canvas>
+            </div>
+            
+            <!-- Right Sidebar - Scenario Controls -->
+            <div class="sidebar bg-white shadow-sm w-1/4 border-l border-gray-200">
+                <h2 class="section-title">Scenarios</h2>
+                <div id="scenarios-container" class="space-y-2 mb-6"></div>
+                <h3 class="section-title mt-6">Drawing Controls</h3>
+                <button id="undo-btn" class="tool-button mb-2 w-full">
+                    <i class="fas fa-undo"></i> Undo (Ctrl+Z)
+                </button>
+                <button id="edit-shapes-btn" class="tool-button mb-2 w-full">
+                    <i class="fas fa-edit"></i> Edit Shapes
+                </button>
+                <div class="text-xs text-gray-500 mt-4">
+                    <p>• Click on the map to add points</p>
+                    <p>• Press Enter to complete a shape</p>
+                    <p>• Click and drag to move shapes</p>
+                    <p>• Right-click on points to delete them</p>
+                    <p>• Right-click on lines to add points</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add/Edit Zone Item Modal -->
+    <div id="zone-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title" class="text-lg font-semibold">Add Zone Item</h3>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="input-group">
+                <label for="zone-name">Name:</label>
+                <input type="text" id="zone-name" placeholder="Enter zone item name">
+            </div>
+            <div class="input-group">
+                <label for="zone-color">Color:</label>
+                <input type="color" id="zone-color">
+                <div class="help-text">The system will ensure this color is unique</div>
+            </div>
+            <div class="flex justify-end mt-4">
+                <button id="cancel-zone-btn" class="tool-button bg-gray-200 mr-2">Cancel</button>
+                <button id="save-zone-btn" class="tool-button bg-blue-500 text-white hover:bg-blue-600">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Main application state
+        const appState = {
+            zoneItems: [],
+            scenarios: [],
+            currentZoneItem: null,
+            currentShape: [],
+            shapes: [],
+            selectedShape: null,
+            selectedPoint: null,
+            isDragging: false,
+            dragStartPos: { x: 0, y: 0 },
+            editMode: false,
+            undoStack: [],
+            backgroundImage: null,
+            editingItemId: null,
+            
+            // Color palette for auto-generating unique colors
+            colorPalette: [
+                '#FFFFAA', '#FFFF00', '#B2B200', '#FFA500', '#000000', 
+                '#FF0000', '#FF66FF', '#0000FF', '#00FF00', '#800080',
+                '#008000', '#808000', '#800000', '#00FFFF', '#FFC0CB',
+                '#A52A2A', '#808080', '#4B0082', '#FFD700', '#7FFFD4'
+            ],
+            usedColors: []
+        };
+        
+        // DOM Elements
+        const canvas = document.getElementById('main-canvas');
+        const ctx = canvas.getContext('2d');
+        const zoneContainer = document.getElementById('zone-container');
+        const scenariosContainer = document.getElementById('scenarios-container');
+        const uploadBgBtn = document.getElementById('upload-bg-btn');
+        const downloadPngBtn = document.getElementById('download-png-btn');
+        const undoBtn = document.getElementById('undo-btn');
+        const editShapesBtn = document.getElementById('edit-shapes-btn');
+        const addZoneBtn = document.getElementById('add-zone-btn');
+        const zoneModal = document.getElementById('zone-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const zoneNameInput = document.getElementById('zone-name');
+        const zoneColorInput = document.getElementById('zone-color');
+        const saveZoneBtn = document.getElementById('save-zone-btn');
+        const cancelZoneBtn = document.getElementById('cancel-zone-btn');
+        const modalClose = document.querySelector('.modal-close');
+        
+        // Initialize default zone items
+        function initializeDefaultZoneItems() {
+            const defaultItems = [
+                { id: generateId(), name: 'Member 1 (Hellgelb)', color: '#FFFFAA', active: true },
+                { id: generateId(), name: 'Member 2 (Gelb)', color: '#FFFF00', active: true },
+                { id: generateId(), name: 'Member 3 (Dunkel Gelb)', color: '#B2B200', active: true },
+                { id: generateId(), name: 'Shareholder (Orange)', color: '#FFA500', active: true },
+                { id: generateId(), name: 'Backstage (Schwarz)', color: '#000000', active: true },
+                { id: generateId(), name: 'Event (Rot)', color: '#FF0000', active: true },
+                { id: generateId(), name: 'Camping (Pink)', color: '#FF66FF', active: true },
+                { id: generateId(), name: 'Spa (Blau)', color: '#0000FF', active: true }
+            ];
+            
+            defaultItems.forEach(item => {
+                appState.zoneItems.push(item);
+                appState.usedColors.push(item.color);
+            });
+        }
+
+        // Initialize default scenarios
+        function initializeDefaultScenarios() {
+            const defaultScenarios = [
+                { id: generateId(), name: 'Festival', zones: {} },
+                { id: generateId(), name: 'All Year', zones: {} },
+                { id: generateId(), name: 'Member 1', zones: {} },
+                { id: generateId(), name: 'Member 2', zones: {} },
+                { id: generateId(), name: 'Member 3', zones: {} },
+                { id: generateId(), name: 'Other Events', zones: {} }
+            ];
+
+            defaultScenarios.forEach(scenario => {
+                appState.zoneItems.forEach(zone => {
+                    scenario.zones[zone.id] = { visible: true };
+                });
+                appState.scenarios.push(scenario);
+            });
+        }
+        
+        // Generate a unique ID
+        function generateId() {
+            return 'id_' + Math.random().toString(36).substr(2, 9);
+        }
+        
+        // Get a unique color for new zone items
+        function getUniqueColor() {
+            const availableColors = appState.colorPalette.filter(
+                color => !appState.usedColors.includes(color)
+            );
+            
+            if (availableColors.length > 0) {
+                return availableColors[0];
+            } else {
+                const r = Math.floor(Math.random() * 200) + 55;
+                const g = Math.floor(Math.random() * 200) + 55;
+                const b = Math.floor(Math.random() * 200) + 55;
+                return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+            }
+        }
+        
+        // Render zone items in the sidebar
+        function renderZoneItems() {
+            zoneContainer.innerHTML = '';
+            
+            appState.zoneItems.forEach(item => {
+                const zoneItem = document.createElement('div');
+                zoneItem.className = `zone-item ${appState.currentZoneItem === item.id ? 'selected' : ''} ${!item.active ? 'deactivated' : ''}`;
+                zoneItem.dataset.id = item.id;
+                
+                const leftSide = document.createElement('div');
+                leftSide.className = 'flex items-center flex-1';
+                
+                const colorSwatch = document.createElement('span');
+                colorSwatch.className = 'color-swatch';
+                colorSwatch.style.backgroundColor = item.color;
+                colorSwatch.style.opacity = item.active ? '1' : '0.5';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = item.name;
+                
+                leftSide.appendChild(colorSwatch);
+                leftSide.appendChild(nameSpan);
+                
+                const controls = document.createElement('div');
+                controls.className = 'zone-controls';
+                
+                const editBtn = document.createElement('span');
+                editBtn.className = 'zone-control';
+                editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+                editBtn.title = 'Edit';
+                editBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    openEditZoneModal(item);
+                };
+                
+                const toggleBtn = document.createElement('span');
+                toggleBtn.className = 'zone-control';
+                toggleBtn.innerHTML = item.active ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+                toggleBtn.title = item.active ? 'Deactivate' : 'Activate';
+                toggleBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleZoneItem(item.id);
+                };
+                
+                const deleteBtn = document.createElement('span');
+                deleteBtn.className = 'zone-control';
+                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                deleteBtn.title = 'Delete';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteZoneItem(item.id);
+                };
+                
+                controls.appendChild(editBtn);
+                controls.appendChild(toggleBtn);
+                controls.appendChild(deleteBtn);
+                
+                zoneItem.appendChild(leftSide);
+                zoneItem.appendChild(controls);
+                
+                zoneItem.addEventListener('click', () => {
+                    if (item.active) {
+                        setCurrentZoneItem(item.id);
+                    }
+                });
+                
+                zoneContainer.appendChild(zoneItem);
+            });
+        }
+        
+        // Render scenario controls
+        function renderScenarios() {
+            scenariosContainer.innerHTML = '';
+            
+            appState.scenarios.forEach(scenario => {
+                const scenarioItem = document.createElement('div');
+                scenarioItem.className = 'scenario-item';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = scenario.name;
+                
+                const toggleBtn = document.createElement('button');
+                toggleBtn.innerHTML = '<i class="fas fa-eye"></i>';
+                toggleBtn.className = 'zone-control';
+                toggleBtn.title = 'Toggle Visibility';
+                toggleBtn.onclick = () => {
+                    toggleScenarioVisibility(scenario.id);
+                };
+                
+                scenarioItem.appendChild(nameSpan);
+                scenarioItem.appendChild(toggleBtn);
+                
+                scenariosContainer.appendChild(scenarioItem);
+            });
+        }
+        
+        // Set current zone item for drawing
+        function setCurrentZoneItem(id) {
+            appState.currentZoneItem = id;
+            appState.selectedShape = null;
+            appState.selectedPoint = null;
+            appState.editMode = false;
+            renderZoneItems();
+            redrawCanvas();
+        }
+        
+        // Toggle zone item active state
+        function toggleZoneItem(id) {
+            const itemIndex = appState.zoneItems.findIndex(item => item.id === id);
+            if (itemIndex !== -1) {
+                appState.zoneItems[itemIndex].active = !appState.zoneItems[itemIndex].active;
+                
+                if (appState.currentZoneItem === id && !appState.zoneItems[itemIndex].active) {
+                    appState.currentZoneItem = null;
+                }
+                
+                renderZoneItems();
+                redrawCanvas();
+            }
+        }
+        
+        // Delete a zone item
+        function deleteZoneItem(id) {
+            const confirmDelete = confirm('Are you sure you want to delete this zone item? All shapes using this item will also be deleted.');
+            
+            if (confirmDelete) {
+                appState.zoneItems = appState.zoneItems.filter(item => item.id !== id);
+                
+                const itemColor = appState.zoneItems.find(item => item.id === id)?.color;
+                if (itemColor) {
+                    appState.usedColors = appState.usedColors.filter(color => color !== itemColor);
+                }
+                
+                appState.shapes = appState.shapes.filter(shape => shape.zoneItemId !== id);
+                
+                // Update scenarios
+                appState.scenarios.forEach(scenario => {
+                    delete scenario.zones[id];
+                });
+                
+                if (appState.currentZoneItem === id) {
+                    appState.currentZoneItem = null;
+                }
+                
+                renderZoneItems();
+                renderScenarios();
+                redrawCanvas();
+            }
+        }
+        
+        // Toggle scenario visibility
+        function toggleScenarioVisibility(id) {
+            const scenario = appState.scenarios.find(s => s.id === id);
+            if (scenario) {
+                // Toggle visibility of all zones in this scenario
+                for (const zoneId in scenario.zones) {
+                    scenario.zones[zoneId].visible = !scenario.zones[zoneId].visible;
+                }
+                redrawCanvas();
+            }
+        }
+        
+        // Open modal to add a new zone item
+        function openAddZoneModal() {
+            modalTitle.textContent = 'Add Zone Item';
+            zoneNameInput.value = '';
+            zoneColorInput.value = getUniqueColor();
+            appState.editingItemId = null;
+            zoneModal.style.display = 'flex';
+        }
+        
+        // Open modal to edit an existing zone item
+        function openEditZoneModal(item) {
+            modalTitle.textContent = 'Edit Zone Item';
+            zoneNameInput.value = item.name;
+            zoneColorInput.value = item.color;
+            appState.editingItemId = item.id;
+            zoneModal.style.display = 'flex';
+        }
+        
+        // Close the zone modal
+        function closeZoneModal() {
+            zoneModal.style.display = 'none';
+        }
+        
+        // Save a new or edited zone item
+        function saveZoneItem() {
+            const name = zoneNameInput.value.trim();
+            let color = zoneColorInput.value;
+            
+            if (!name) {
+                alert('Please enter a name for the zone item.');
+                return;
+            }
+            
+            if (appState.editingItemId) {
+                const itemIndex = appState.zoneItems.findIndex(item => item.id === appState.editingItemId);
+                
+                if (itemIndex !== -1) {
+                    const oldColor = appState.zoneItems[itemIndex].color;
+                    if (oldColor !== color) {
+                        const colorInUse = appState.zoneItems.some(item => 
+                            item.id !== appState.editingItemId && item.color === color
+                        );
+                        
+                        if (colorInUse) {
+                            color = getUniqueColor();
+                        }
+                        
+                        appState.usedColors = appState.usedColors.filter(c => c !== oldColor);
+                        appState.usedColors.push(color);
+                    }
+                    
+                    appState.zoneItems[itemIndex].name = name;
+                    appState.zoneItems[itemIndex].color = color;
+                    
+                    // Update shapes with this zone item
+                    appState.shapes.forEach(shape => {
+                        if (shape.zoneItemId === appState.editingItemId) {
+                            shape.color = color;
+                        }
+                    });
+                }
+            } else {
+                const colorInUse = appState.zoneItems.some(item => item.color === color);
+                if (colorInUse) {
+                    color = getUniqueColor();
+                }
+                
+                const newItem = {
+                    id: generateId(),
+                    name: name,
+                    color: color,
+                    active: true
+                };
+                
+                appState.zoneItems.push(newItem);
+                appState.usedColors.push(color);
+                
+                // Add to all scenarios
+                appState.scenarios.forEach(scenario => {
+                    scenario.zones[newItem.id] = { visible: true };
+                });
+            }
+            
+            renderZoneItems();
+            renderScenarios();
+            closeZoneModal();
+            redrawCanvas();
+        }
+        
+        // Toggle edit mode
+        function toggleEditMode() {
+            appState.editMode = !appState.editMode;
+            appState.selectedShape = null;
+            appState.selectedPoint = null;
+            
+            if (appState.editMode) {
+                canvas.style.cursor = 'pointer';
+                editShapesBtn.innerHTML = '<i class="fas fa-draw-polygon"></i> Draw Mode';
+            } else {
+                canvas.style.cursor = 'crosshair';
+                editShapesBtn.innerHTML = '<i class="fas fa-edit"></i> Edit Shapes';
+            }
+            
+            redrawCanvas();
+        }
+        
+        // Check if a point is inside a shape
+        function isPointInShape(x, y, shape) {
+            let inside = false;
+            const points = shape.points;
+            
+            for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+                const xi = points[i].x, yi = points[i].y;
+                const xj = points[j].x, yj = points[j].y;
+                
+                const intersect = ((yi > y) !== (yj > y)) && 
+                    (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                
+                if (intersect) inside = !inside;
+            }
+            
+            return inside;
+        }
+        
+        // Find the closest point on a line segment from a given point
+        function closestPointOnLine(x, y, x1, y1, x2, y2) {
+            const A = x - x1;
+            const B = y - y1;
+            const C = x2 - x1;
+            const D = y2 - y1;
+            
+            const dot = A * C + B * D;
+            const lenSq = C * C + D * D;
+            let param = -1;
+            
+            if (lenSq !== 0) param = dot / lenSq;
+            
+            let xx, yy;
+            
+            if (param < 0) {
+                xx = x1;
+                yy = y1;
+            } else if (param > 1) {
+                xx = x2;
+                yy = y2;
+            } else {
+                xx = x1 + param * C;
+                yy = y1 + param * D;
+            }
+            
+            const dx = x - xx;
+            const dy = y - yy;
+            
+            return {
+                x: xx,
+                y: yy,
+                distance: Math.sqrt(dx * dx + dy * dy),
+                param: param
+            };
+        }
+        
+        // Find the closest point and line segment to the cursor
+        function findClosestPointAndLine(x, y) {
+            const threshold = 10; // distance threshold for selection
+            let closestPoint = null;
+            let closestDistance = Infinity;
+            let closestShape = null;
+            let closestPointIndex = -1;
+            
+            let closestLinePoint = null;
+            let closestLineDistance = Infinity;
+            let closestLineShape = null;
+            let closestLineIndex = -1;
+            
+            appState.shapes.forEach((shape, shapeIndex) => {
+                // Skip shapes that are from inactive zone items
+                const zoneItem = appState.zoneItems.find(item => item.id === shape.zoneItemId);
+                if (!zoneItem || !zoneItem.active) return;
+                
+                // Check if any points are close to the cursor
+                shape.points.forEach((point, pointIndex) => {
+                    const distance = Math.sqrt(Math.pow(point.x - x, 2) + Math.pow(point.y - y, 2));
+                    if (distance < threshold && distance < closestDistance) {
+                        closestDistance = distance;
+                        closestPoint = point;
+                        closestShape = shape;
+                        closestPointIndex = pointIndex;
+                    }
+                });
+                
+                // Check if cursor is close to any line segments
+                for (let i = 0; i < shape.points.length; i++) {
+                    const p1 = shape.points[i];
+                    const p2 = shape.points[(i + 1) % shape.points.length];
+                    
+                    const closest = closestPointOnLine(x, y, p1.x, p1.y, p2.x, p2.y);
+                    
+                    if (closest.distance < threshold && closest.distance < closestLineDistance) {
+                        closestLineDistance = closest.distance;
+                        closestLinePoint = closest;
+                        closestLineShape = shape;
+                        closestLineIndex = i;
+                    }
+                }
+            });
+            
+            // If we found a point, return that
+            if (closestPoint) {
+                return {
+                    type: 'point',
+                    point: closestPoint,
+                    shape: closestShape,
+                    index: closestPointIndex,
+                    distance: closestDistance
+                };
+            }
+            
+            // Otherwise, if we found a line, return that
+            if (closestLinePoint) {
+                return {
+                    type: 'line',
+                    point: closestLinePoint,
+                    shape: closestLineShape,
+                    index: closestLineIndex,
+                    distance: closestLineDistance
+                };
+            }
+            
+            return null;
+        }
+        
+        // Handle mouse down event
+        function handleMouseDown(e) {
+            if (e.button === 2) return; // Handle right-click separately
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            if (appState.editMode) {
+                // In edit mode, check if we clicked on a shape or point
+                const closest = findClosestPointAndLine(x, y);
+                
+                if (closest && closest.type === 'point') {
+                    // We clicked on a point, select it for dragging
+                    appState.selectedShape = closest.shape;
+                    appState.selectedPoint = closest.index;
+                    appState.isDragging = true;
+                    appState.dragStartPos = { x, y };
+                    redrawCanvas();
+                    return;
+                }
+                
+                // Check if we clicked inside a shape
+                for (let i = appState.shapes.length - 1; i >= 0; i--) {
+                    const shape = appState.shapes[i];
+                    const zoneItem = appState.zoneItems.find(item => item.id === shape.zoneItemId);
+                    
+                    if (!zoneItem || !zoneItem.active) continue;
+                    
+                    if (isPointInShape(x, y, shape)) {
+                        appState.selectedShape = shape;
+                        appState.isDragging = true;
+                        appState.dragStartPos = { x, y };
+                        redrawCanvas();
+                        return;
+                    }
+                }
+                
+                appState.selectedShape = null;
+                appState.selectedPoint = null;
+                redrawCanvas();
+            } else {
+                // In draw mode, add points to the current shape
+                if (!appState.currentZoneItem) {
+                    alert('Please select a zone item before drawing.');
+                    return;
+                }
+                
+                appState.currentShape.push({ x, y });
+                
+                const action = {
+                    type: 'add_point',
+                    point: { x, y },
+                    shapeIndex: appState.currentShape.length - 1
+                };
+                appState.undoStack.push(action);
+                
+                redrawCanvas();
+            }
+        }
+        
+        // Handle mouse move event
+        function handleMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            if (appState.editMode && appState.isDragging) {
+                const deltaX = x - appState.dragStartPos.x;
+                const deltaY = y - appState.dragStartPos.y;
+                
+                if (appState.selectedShape) {
+                    if (appState.selectedPoint !== null) {
+                        // Dragging a single point
+                        appState.selectedShape.points[appState.selectedPoint].x += deltaX;
+                        appState.selectedShape.points[appState.selectedPoint].y += deltaY;
+                    } else {
+                        // Dragging the entire shape
+                        appState.selectedShape.points.forEach(point => {
+                            point.x += deltaX;
+                            point.y += deltaY;
+                        });
+                    }
+                    
+                    appState.dragStartPos = { x, y };
+                    redrawCanvas();
+                }
+            }
+        }
+        
+        // Handle mouse up event
+        function handleMouseUp(e) {
+            if (appState.editMode && appState.isDragging) {
+                appState.isDragging = false;
+                
+                // Save the move action for undo
+                if (appState.selectedShape) {
+                    const action = {
+                        type: 'move_shape',
+                        shape: JSON.parse(JSON.stringify(appState.selectedShape)),
+                        shapeIndex: appState.shapes.indexOf(appState.selectedShape)
+                    };
+                    appState.undoStack.push(action);
+                }
+            }
+        }
+        
+        // Handle right-click event
+        function handleContextMenu(e) {
+            e.preventDefault();
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            if (appState.editMode) {
+                // In edit mode, right-click to add or remove points
+                const closest = findClosestPointAndLine(x, y);
+                
+                if (closest) {
+                    if (closest.type === 'point') {
+                        // Remove the point if it's not the only point
+                        if (closest.shape.points.length > 3) {
+                            closest.shape.points.splice(closest.index, 1);
+                            
+                            const action = {
+                                type: 'remove_point',
+                                shape: closest.shape,
+                                pointIndex: closest.index,
+                                point: closest.point
+                            };
+                            appState.undoStack.push(action);
+                            
+                            redrawCanvas();
+                        }
+                    } else if (closest.type === 'line') {
+                        // Add a new point on the line
+                        const newPoint = {
+                            x: closest.point.x,
+                            y: closest.point.y
+                        };
+                        
+                        closest.shape.points.splice(closest.index + 1, 0, newPoint);
+                        
+                        const action = {
+                            type: 'add_shape_point',
+                            shape: closest.shape,
+                            pointIndex: closest.index + 1,
+                            point: newPoint
+                        };
+                        appState.undoStack.push(action);
+                        
+                        redrawCanvas();
+                    }
+                }
+            } else {
+                // In draw mode, right-click to remove the last point
+                if (appState.currentShape.length > 0) {
+                    appState.currentShape.pop();
+                    
+                    const action = {
+                        type: 'remove_current_point'
+                    };
+                    appState.undoStack.push(action);
+                    
+                    redrawCanvas();
+                }
+            }
+        }
+        
+        // Handle keyboard events
+        function handleKeyDown(e) {
+            // Enter key to complete the shape
+            if (e.key === 'Enter' && appState.currentShape.length >= 3) {
+                completeCurrentShape();
+            }
+            
+            // Undo (Ctrl+Z or Cmd+Z)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                undoLastAction();
+            }
+            
+            // Delete key to delete selected shape
+            if (e.key === 'Delete' && appState.selectedShape) {
+                const shapeIndex = appState.shapes.indexOf(appState.selectedShape);
+                if (shapeIndex !== -1) {
+                    const action = {
+                        type: 'delete_shape',
+                        shape: appState.selectedShape,
+                        shapeIndex: shapeIndex
+                    };
+                    appState.undoStack.push(action);
+                    
+                    appState.shapes.splice(shapeIndex, 1);
+                    appState.selectedShape = null;
+                    redrawCanvas();
+                }
+            }
+        }
+        
+        // Complete the current shape being drawn
+        function completeCurrentShape() {
+            if (appState.currentShape.length >= 3 && appState.currentZoneItem) {
+                const zoneItem = appState.zoneItems.find(item => item.id === appState.currentZoneItem);
+                
+                if (zoneItem) {
+                    const shape = {
+                        zoneItemId: zoneItem.id,
+                        color: zoneItem.color,
+                        points: [...appState.currentShape]
+                    };
+                    
+                    appState.shapes.push(shape);
+                    
+                    const action = {
+                        type: 'complete_shape',
+                        shape: shape,
+                        shapeIndex: appState.shapes.length - 1
+                    };
+                    appState.undoStack.push(action);
+                    
+                    appState.currentShape = [];
+                    redrawCanvas();
+                }
+            }
+        }
+        
+        // Undo the last action
+        function undoLastAction() {
+            if (appState.undoStack.length > 0) {
+                const lastAction = appState.undoStack.pop();
+                
+                switch (lastAction.type) {
+                    case 'add_point':
+                        if (appState.currentShape.length > 0) {
+                            appState.currentShape.pop();
+                        }
+                        break;
+                        
+                    case 'remove_current_point':
+                        if (lastAction.point) {
+                            appState.currentShape.push(lastAction.point);
+                        }
+                        break;
+                        
+                    case 'complete_shape':
+                        if (lastAction.shapeIndex !== undefined) {
+                            appState.shapes.splice(lastAction.shapeIndex, 1);
+                        }
+                        break;
+                        
+                    case 'move_shape':
+                        if (lastAction.shape && lastAction.shapeIndex !== undefined) {
+                            appState.shapes[lastAction.shapeIndex] = JSON.parse(JSON.stringify(lastAction.shape));
+                        }
+                        break;
+                        
+                    case 'delete_shape':
+                        if (lastAction.shape) {
+                            appState.shapes.splice(lastAction.shapeIndex, 0, lastAction.shape);
+                        }
+                        break;
+                        
+                    case 'add_shape_point':
+                        if (lastAction.shape && lastAction.pointIndex !== undefined) {
+                            lastAction.shape.points.splice(lastAction.pointIndex, 1);
+                        }
+                        break;
+                        
+                    case 'remove_point':
+                        if (lastAction.shape && lastAction.pointIndex !== undefined && lastAction.point) {
+                            lastAction.shape.points.splice(lastAction.pointIndex, 0, lastAction.point);
+                        }
+                        break;
+                }
+                
+                redrawCanvas();
+            }
+        }
+        
+        // Handle file selection for background upload
+        function handleBackgroundUpload(e) {
+            const file = e.target.files[0];
+            if (file && file.type.match('image.*')) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        appState.backgroundImage = img;
+                        
+                        // Resize canvas to match image aspect ratio
+                        const aspectRatio = img.width / img.height;
+                        const canvasWidth = Math.min(img.width, 1000);
+                        const canvasHeight = canvasWidth / aspectRatio;
+                        
+                        canvas.width = canvasWidth;
+                        canvas.height = canvasHeight;
+                        
+                        redrawCanvas();
+                    };
+                    img.src = e.target.result;
+                };
+                
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        // Download the canvas as PNG
+        function downloadCanvasAsPNG() {
+            const link = document.createElement('a');
+            link.download = 'garbiczland-plan.png';
+            link.href = canvas.toDataURL('image/png');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // Redraw the entire canvas
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background image if available
+            if (appState.backgroundImage) {
+                ctx.drawImage(appState.backgroundImage, 0, 0, canvas.width, canvas.height);
+            }
+            
+            // Get visible shapes based on scenarios
+            const visibleZoneIds = {};
+            appState.zoneItems.forEach(item => {
+                visibleZoneIds[item.id] = item.active;
+            });
+            
+            // Apply scenario visibility settings
+            appState.scenarios.forEach(scenario => {
+                for (const zoneId in scenario.zones) {
+                    if (!scenario.zones[zoneId].visible) {
+                        visibleZoneIds[zoneId] = false;
+                    }
+                }
+            });
+            
+            // Draw all completed shapes
+            appState.shapes.forEach(shape => {
+                if (visibleZoneIds[shape.zoneItemId]) {
+                    const isSelected = shape === appState.selectedShape;
+                    drawShape(shape.points, shape.color, 0.5, isSelected);
+                }
+            });
+            
+            // Draw current shape being created
+            if (appState.currentShape.length > 0) {
+                const zoneItem = appState.zoneItems.find(item => item.id === appState.currentZoneItem);
+                if (zoneItem) {
+                    drawShape(appState.currentShape, zoneItem.color, 0.5, false);
+                    
+                    // Draw points for current shape
+                    appState.currentShape.forEach(point => {
+                        ctx.beginPath();
+                        ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+                        ctx.fillStyle = zoneItem.color;
+                        ctx.fill();
+                        ctx.strokeStyle = '#000';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    });
+                }
+            }
+            
+            // In edit mode, draw handles for the selected shape
+            if (appState.editMode && appState.selectedShape) {
+                appState.selectedShape.points.forEach((point, index) => {
+                    ctx.beginPath();
+                    ctx.arc(point.x, point.y, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = index === appState.selectedPoint ? '#ff0000' : '#ffffff';
+                    ctx.fill();
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                });
+            }
+        }
+        
+        // Draw a shape on the canvas
+        function drawShape(points, color, opacity, isSelected) {
+            if (points.length < 3) return;
+            
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            
+            for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y);
+            }
+            
+            ctx.closePath();
+            
+            // Fill with semi-transparent color
+            const alpha = Math.floor(opacity * 255).toString(16).padStart(2, '0');
+            ctx.fillStyle = color + alpha;
+            ctx.fill();
+            
+            // Draw outline
+            ctx.strokeStyle = isSelected ? '#ff0000' : color;
+            ctx.lineWidth = isSelected ? 3 : 2;
+            ctx.stroke();
+        }
+        
+        // Initialize application
+        function initApp() {
+            // Set up canvas and initial state
+            canvas.width = 1000;
+            canvas.height = 800;
+            
+            // Initialize default data
+            initializeDefaultZoneItems();
+            initializeDefaultScenarios();
+            
+            // Render UI components
+            renderZoneItems();
+            renderScenarios();
+            
+            // Prevent context menu on canvas
+            canvas.addEventListener('contextmenu', handleContextMenu);
+            
+            // Set up event listeners
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            document.addEventListener('keydown', handleKeyDown);
+            
+            uploadBgBtn.addEventListener('click', () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = handleBackgroundUpload;
+                input.click();
+            });
+            
+            downloadPngBtn.addEventListener('click', downloadCanvasAsPNG);
+            undoBtn.addEventListener('click', undoLastAction);
+            editShapesBtn.addEventListener('click', toggleEditMode);
+            addZoneBtn.addEventListener('click', openAddZoneModal);
+            
+            saveZoneBtn.addEventListener('click', saveZoneItem);
+            cancelZoneBtn.addEventListener('click', closeZoneModal);
+            modalClose.addEventListener('click', closeZoneModal);
+            
+            // Set up touch events for mobile
+            let touchStartX = 0;
+            document.addEventListener('touchstart', e => {
+                touchStartX = e.touches[0].clientX;
+            });
+            
+            document.addEventListener('touchend', e => {
+                const touchEndX = e.changedTouches[0].clientX;
+                const swipeDistance = touchStartX - touchEndX;
+                
+                if (swipeDistance > 100) {
+                    undoLastAction();
+                }
+            });
+            
+            // Load data from localStorage if available
+            const savedData = localStorage.getItem('garbiczlandData');
+            if (savedData) {
+                try {
+                    const parsedData = JSON.parse(savedData);
+                    
+                    if (parsedData.zoneItems && parsedData.zoneItems.length > 0) {
+                        appState.zoneItems = parsedData.zoneItems;
+                    }
+                    
+                    if (parsedData.scenarios && parsedData.scenarios.length > 0) {
+                        appState.scenarios = parsedData.scenarios;
+                    }
+                    
+                    if (parsedData.shapes) {
+                        appState.shapes = parsedData.shapes;
+                    }
+                    
+                    if (parsedData.usedColors) {
+                        appState.usedColors = parsedData.usedColors;
+                    }
+                    
+                    if (parsedData.backgroundImageUrl) {
+                        const img = new Image();
+                        img.onload = function() {
+                            appState.backgroundImage = img;
+                            canvas.width = img.width > 1000 ? 1000 : img.width;
+                            canvas.height = canvas.width * (img.height / img.width);
+                            redrawCanvas();
+                        };
+                        img.src = parsedData.backgroundImageUrl;
+                    }
+                    
+                    renderZoneItems();
+                    renderScenarios();
+                } catch (error) {
+                    console.error('Error loading saved data:', error);
+                }
+            }
+            
+            // Draw initial canvas
+            redrawCanvas();
+            
+            // Set up auto-save
+            setInterval(() => {
+                const dataToSave = {
+                    zoneItems: appState.zoneItems,
+                    scenarios: appState.scenarios,
+                    shapes: appState.shapes,
+                    usedColors: appState.usedColors,
+                    backgroundImageUrl: appState.backgroundImage ? appState.backgroundImage.src : null
+                };
+                
+                localStorage.setItem('garbiczlandData', JSON.stringify(dataToSave));
+            }, 10000); // Auto-save every 10 seconds
+        }
+        
+        // Initialize the application when the document is loaded
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
+
