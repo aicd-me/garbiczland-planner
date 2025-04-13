@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Zone Planner</title>
+    <!-- Required libraries -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .tool-button {
+            padding: 0.5rem;
+            margin: 0.25rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            transition: background-color 0.2s;
+        }
+        .tool-button:hover {
+            background-color: #e0e0e0;
+        }
+        .tool-button.active {
+            background-color: #d0d0d0;
+        }
+        .zone-item {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            margin-bottom: 0.25rem;
+            cursor: pointer;
+        }
+        .zone-item:hover {
+            background-color: #f0f0f0;
+        }
+        .color-dot {
+            width: 1rem;
+            height: 1rem;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto p-4">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-4 bg-white p-4 rounded shadow">
+            <div class="text-xl font-bold">3D Zone Planner</div>
+            <div class="flex">
+                <button id="clear-btn" class="tool-button">
+                    <i class="fas fa-trash"></i> Clear
+                </button>
+                <button id="toggle-3d-btn" class="tool-button ml-2">
+                    <i class="fas fa-cube"></i> 3D View
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex gap-4">
+            <!-- Left Sidebar -->
+            <div class="w-64 bg-white p-4 rounded shadow">
+                <h2 class="text-lg font-semibold mb-2">Zones</h2>
+                <div id="zone-list" class="mb-4">
+                    <!-- Zone items will be added here -->
+                </div>
+                <button id="add-zone-btn" class="w-full bg-blue-500 text-white py-2 px-4 rounded">
+                    <i class="fas fa-plus"></i> Add Zone
+                </button>
+                
+                <h2 class="text-lg font-semibold mt-4 mb-2">Drawing Mode</h2>
+                <div class="flex flex-col">
+                    <button id="draw-btn" class="tool-button mb-2 active">
+                        <i class="fas fa-pen"></i> Draw
+                    </button>
+                    <button id="move-btn" class="tool-button mb-2">
+                        <i class="fas fa-arrows-alt"></i> Move
+                    </button>
+                    <button id="delete-btn" class="tool-button">
+                        <i class="fas fa-trash-alt"></i> Delete
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Canvas Area -->
+            <div class="flex-1 bg-white p-4 rounded shadow">
+                <div class="relative">
+                    <canvas id="main-canvas" width="1000" height="800" class="border border-gray-300"></canvas>
+                    <div id="three-canvas-container" style="display:none; width:1000px; height:800px;">
+                        <!-- Three.js canvas will be injected here -->
+                    </div>
+                </div>
+                <div class="mt-4 text-sm text-gray-600">
+                    <p>Click on the canvas to draw zones. Switch to 3D View to see the extruded zones.</p>
+                    <p>In 3D mode: Left-click + drag to rotate, Right-click + drag to pan, Scroll to zoom.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // App State
+        const appState = {
+            mode: 'draw', // draw, move, delete
+            currentZone: null,
+            zoneItems: [],
+            shapes: [],
+            currentShape: [],
+            backgroundImage: null,
+            dragging: false,
+            selectedShape: null,
+            dragOffset: { x: 0, y: 0 }
+        };
+
+        // DOM Elements
+        const canvas = document.getElementById('main-canvas');
+        const ctx = canvas.getContext('2d');
+        const drawBtn = document.getElementById('draw-btn');
+        const moveBtn = document.getElementById('move-btn');
+        const deleteBtn = document.getElementById('delete-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const zoneList = document.getElementById('zone-list');
+        const addZoneBtn = document.getElementById('add-zone-btn');
+
+        // Set active drawing mode
+        function setActiveButton() {
+            drawBtn.classList.toggle('active', appState.mode === 'draw');
+            moveBtn.classList.toggle('active', appState.mode === 'move');
+            deleteBtn.classList.toggle('active', appState.mode === 'delete');
+        }
+
+        // Event Listeners for tool buttons
+        drawBtn.addEventListener('click', () => {
+            appState.mode = 'draw';
+            setActiveButton();
+        });
+
+        moveBtn.addEventListener('click', () => {
+            appState.mode = 'move';
+            setActiveButton();
+        });
+
+        deleteBtn.addEventListener('click', () => {
+            appState.mode = 'delete';
+            setActiveButton();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            if (confirm('Clear all shapes?')) {
+                appState.shapes = [];
+                appState.currentShape = [];
+                render();
+            }
+        });
+
+        // Add Zone button
+        addZoneBtn.addEventListener('click', () => {
+            const name = prompt('Enter zone name:');
+            if (name) {
+                const color = getRandomColor();
+                const id = Date.now().toString();
+                appState.zoneItems.push({
+                    id,
+                    name,
+                    color,
+                    active: true
+                });
+                appState.currentZone = id;
+                updateZoneList();
+            }
+        });
+
+        // Helper Functions
+        function getRandomColor() {
+            const colors = [
+                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                '#FF9F40', '#E7E9ED', '#C9CBCF', '#7FDBFF', '#2ECC40'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        function updateZoneList() {
+            zoneList.innerHTML = '';
+            appState.zoneItems.forEach(zone => {
+                const item = document.createElement('div');
+                item.className = 'zone-item';
+                item.innerHTML = `
+                    <div class="color-dot" style="background-color: ${zone.color}"></div>
+                    <div class="flex-1">${zone.name}</div>
+                    <input type="checkbox" ${zone.active ? 'checked' : ''}>
+                `;
+                item.querySelector('input').addEventListener('change', (e) => {
+                    zone.active = e.target.checked;
+                    render();
+                });
+                item.addEventListener('click', (e) => {
+                    if (e.target.type !== 'checkbox') {
+                        appState.currentZone = zone.id;
+                        updateZoneList();
+                    }
+                });
+                if (appState.currentZone === zone.id) {
+                    item.classList.add('bg-blue-100');
+                }
+                zoneList.appendChild(item);
+            });
+        }
+
+        // Canvas Event Listeners
+        canvas.addEventListener('mousedown', handleMouseDown);
+        canvas.addEventListener('mousemove', handleMouseMove);
+        canvas.addEventListener('mouseup', handleMouseUp);
+
+        function handleMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (appState.mode === 'draw' && appState.currentZone) {
+                appState.currentShape.push({ x, y });
+                render();
+            } else if (appState.mode === 'move') {
+                // Check if clicked inside a shape
+                for (const shape of appState.shapes) {
+                    if (isPointInPolygon(x, y, shape.points)) {
+                        appState.selectedShape = shape;
+                        appState.dragging = true;
+                        appState.dragOffset = { x, y };
+                        break;
+                    }
+                }
+            } else if (appState.mode === 'delete') {
+                // Check if clicked inside a shape
+                for (let i = 0; i < appState.shapes.length; i++) {
+                    if (isPointInPolygon(x, y, appState.shapes[i].points)) {
+                        appState.shapes.splice(i, 1);
+                        render();
+                        break;
+                    }
+                }
+            }
+        }
+
+        function handleMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (appState.mode === 'draw' && appState.currentShape.length > 0) {
+                render();
+                // Draw preview line
+                ctx.beginPath();
+                ctx.moveTo(appState.currentShape[appState.currentShape.length - 1].x, 
+                          appState.currentShape[appState.currentShape.length - 1].y);
+                ctx.lineTo(x, y);
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            } else if (appState.mode === 'move' && appState.dragging && appState.selectedShape) {
+                const dx = x - appState.dragOffset.x;
+                const dy = y - appState.dragOffset.y;
+                
+                // Move all points in the shape
+                for (let point of appState.selectedShape.points) {
+                    point.x += dx;
+                    point.y += dy;
+                }
+                
+                appState.dragOffset = { x, y };
+                render();
+            }
+        }
+
+        function handleMouseUp(e) {
+            if (appState.mode === 'draw' && appState.currentShape.length > 0) {
+                if (appState.currentShape.length >= 3) {
+                    // Complete shape if at least 3 points (triangle)
+                    const zoneItem = appState.zoneItems.find(z => z.id === appState.currentZone);
+                    if (zoneItem) {
+                        appState.shapes.push({
+                            points: [...appState.currentShape],
+                            color: zoneItem.color,
+                            zoneItemId: zoneItem.id
+                        });
+                    }
+                }
+                appState.currentShape = [];
+                render();
+            } else if (appState.mode === 'move') {
+                appState.dragging = false;
+                appState.selectedShape = null;
+            }
+        }
+
+        function isPointInPolygon(x, y, points) {
+            let inside = false;
+            for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+                const xi = points[i].x, yi = points[i].y;
+                const xj = points[j].x, yj = points[j].y;
+                
+                const intersect = ((yi > y) !== (yj > y)) &&
+                    (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background (solid color if no image)
+            if (appState.backgroundImage) {
+                ctx.drawImage(appState.backgroundImage, 0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Draw grid lines for reference
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            
+            // Vertical lines
+            for (let x = 0; x <= canvas.width; x += 50) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Horizontal lines
+            for (let y = 0; y <= canvas.height; y += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // Draw all shapes
+            appState.shapes.forEach(shape => {
+                const zoneItem = appState.zoneItems.find(z => z.id === shape.zoneItemId);
+                if (zoneItem && zoneItem.active) {
+                    drawShape(shape.points, shape.color);
+                }
+            });
+
+            // Draw current shape being created
+            if (appState.currentShape.length > 0) {
+                const zoneItem = appState.zoneItems.find(z => z.id === appState.currentZone);
+                if (zoneItem) {
+                    drawShape(appState.currentShape, zoneItem.color);
+                }
+            }
+        }
+
+        function drawShape(points, color) {
+            if (points.length < 2) return;
+            
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            
+            for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y);
+            }
+            
+            if (points.length >= 3) {
+                ctx.closePath();
+            }
+            
+            ctx.fillStyle = color + '80'; // Add transparency
+            ctx.fill();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Draw points
+            points.forEach(point => {
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+        }
+
+        // Initialize with sample data
+        function initSampleData() {
+            // Add sample zones
+            const zone1 = {
+                id: 'zone1',
+                name: 'Residential',
+                color: '#FF6384',
+                active: true
+            };
+            
+            const zone2 = {
+                id: 'zone2',
+                name: 'Commercial',
+                color: '#36A2EB',
+                active: true
+            };
+            
+            const zone3 = {
+                id: 'zone3',
+                name: 'Industrial',
+                color: '#FFCE56',
+                active: true
+            };
+            
+            appState.zoneItems.push(zone1, zone2, zone3);
+            appState.currentZone = 'zone1';
+            
+            // Add sample shapes
+            appState.shapes.push({
+                points: [
+                    { x: 200, y: 200 },
+                    { x: 400, y: 200 },
+                    { x: 400, y: 400 },
+                    { x: 200, y: 400 }
+                ],
+                color: zone1.color,
+                zoneItemId: zone1.id
+            });
+            
+            appState.shapes.push({
+                points: [
+                    { x: 600, y: 300 },
+                    { x: 800, y: 300 },
+                    { x: 700, y: 500 }
+                ],
+                color: zone2.color,
+                zoneItemId: zone2.id
+            });
+            
+            appState.shapes.push({
+                points: [
+                    { x: 300, y: 600 },
+                    { x: 500, y: 500 },
+                    { x: 600, y: 700 },
+                    { x: 400, y: 800 }
+                ],
+                color: zone3.color,
+                zoneItemId: zone3.id
+            });
+            
+            updateZoneList();
+            render();
+        }
+
+        // Initialize the app
+        function init() {
+            setActiveButton();
+            initSampleData();
+        }
+
+        init();
+
+        // --- 3D View Logic ---
+        let is3D = false, threeScene, threeCamera, threeRenderer, orbitControls, threeShapes=[], threeBgMesh;
+
+        const threeContainer = document.getElementById('three-canvas-container');
+        const toggle3dBtn = document.getElementById('toggle-3d-btn');
+
+        toggle3dBtn.addEventListener('click', function() {
+            is3D = !is3D;
+            if (is3D) {
+                canvas.style.display = 'none';
+                threeContainer.style.display = 'block';
+                toggle3dBtn.classList.add('bg-blue-200');
+                show3D();
+            } else {
+                canvas.style.display = '';
+                threeContainer.style.display = 'none';
+                toggle3dBtn.classList.remove('bg-blue-200');
+                if (threeRenderer) threeRenderer.dispose();
+                threeContainer.innerHTML = '';
+            }
+        });
+
+        function show3D() {
+            // Set up Three.js if not already
+            if (!threeRenderer) {
+                threeScene = new THREE.Scene();
+                threeCamera = new THREE.PerspectiveCamera(45, 1000/800, 0.1, 5000);
+                threeCamera.position.set(0, -800, 1000);
+                threeRenderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+                threeRenderer.setClearColor(0xffffff, 1);
+                threeRenderer.setSize(1000, 800);
+                threeContainer.innerHTML = '';
+                threeContainer.appendChild(threeRenderer.domElement);
+
+                orbitControls = new THREE.OrbitControls(threeCamera, threeRenderer.domElement);
+                orbitControls.enableDamping = true;
+            }
+            // Remove previous objects
+            while(threeScene.children.length > 0){ 
+                threeScene.remove(threeScene.children[0]); 
+            }
+
+            // Add a basic light
+            let light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(0, 0, 2000);
+            threeScene.add(light);
+            threeScene.add(new THREE.AmbientLight(0xffffff, 0.7));
+
+            // Add flat background plane
+            if (appState.backgroundImage) {
+                let tx = new THREE.TextureLoader().load(appState.backgroundImage.src);
+                let geo = new THREE.PlaneGeometry(1000, 800);
+                let mat = new THREE.MeshBasicMaterial({map: tx, side: THREE.DoubleSide});
+                threeBgMesh = new THREE.Mesh(geo, mat);
+                threeScene.add(threeBgMesh);
+            } else {
+                // Add a grid plane if no background image
+                let geo = new THREE.PlaneGeometry(1000, 800);
+                let mat = new THREE.MeshBasicMaterial({color: 0xf0f0f0, side: THREE.DoubleSide});
+                threeBgMesh = new THREE.Mesh(geo, mat);
+                threeScene.add(threeBgMesh);
+                
+                // Add grid lines
+                let grid = new THREE.GridHelper(1000, 20);
+                grid.rotation.x = Math.PI / 2;
+                threeScene.add(grid);
+            }
+
+            // Height to extrude zones
+            const heights = [30, 60, 90, 120, 150, 180, 210, 240]; // Heights for each zone
+            let visibleZoneIds = {};
+            appState.zoneItems.forEach(item => {
+                visibleZoneIds[item.id] = item.active;
+            });
+
+            // For color -> rgb
+            const hexToRgb = h => {
+                let c = h.replace('#','');
+                if (c.length === 3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+                let num = parseInt(c,16);
+                return [(num>>16)&255, (num>>8)&255, num&255];
+            }
+            let zIdx = 0;
+
+            // Draw extruded zones
+            appState.shapes.forEach(shape => {
+                if (!visibleZoneIds[shape.zoneItemId]) return;
+                let points = shape.points.map(p => new THREE.Vector2(p.x-500, 400-p.y));
+                if (points.length < 3) return;
+                
+                // Make sure polygon is CCW
+                const area = THREE.ShapeUtils.area(points);
+                if (area < 0) points.reverse();
+
+                let threeShape = new THREE.Shape(points);
+
+                let height = heights[zIdx % heights.length];
+                zIdx++;
+
+                let colorHex = shape.color;
+                let rgb = hexToRgb(colorHex);
+                let mat = new THREE.MeshPhongMaterial({
+                    color: new THREE.Color(`rgb(${rgb[0]},${rgb[1]},${rgb[2]})`),
+                    opacity: 0.65,
+                    transparent: true,
+                    side: THREE.DoubleSide
+                });
+                
+                // Extrude geometry
+                let geometry = new THREE.ExtrudeGeometry(
+                    threeShape, { depth: height, bevelEnabled: false }
+                );
+                
+                // Move it above background
+                geometry.translate(0, 0, 20 * zIdx);
+                let mesh = new THREE.Mesh(geometry, mat);
+                threeScene.add(mesh);
+            });
+            animate3D();
+        }
+
+        function animate3D() {
+            if (!is3D) return;
+            requestAnimationFrame(animate3D);
+            orbitControls.update();
+            threeRenderer.render(threeScene, threeCamera);
+        }
+    </script>
+</body>
+</html>
