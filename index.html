@@ -329,6 +329,42 @@
             </div>
         </div>
 
+        <!-- Save New Version Modal -->
+        <div id="save-new-version-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="text-lg font-semibold">Save New Version</h3>
+                    <span class="modal-close-save-version" style="cursor:pointer;">&times;</span>
+                </div>
+                <div class="input-group">
+                    <label for="new-version-name">Version Name:</label>
+                    <input type="text" id="new-version-name" placeholder="Enter a name for this version">
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button id="cancel-save-new-version-btn" class="tool-button bg-gray-200 mr-2">Cancel</button>
+                    <button id="confirm-save-new-version-btn" class="tool-button bg-blue-500 text-white hover:bg-blue-600">Save</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Import Version Modal -->
+        <div id="import-version-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="text-lg font-semibold">Import Version</h3>
+                    <span class="modal-close-import-version" style="cursor:pointer;">&times;</span>
+                </div>
+                <div class="input-group">
+                    <label for="import-version-data">Version Data or Deeplink:</label>
+                    <textarea id="import-version-data" placeholder="Paste version data or deeplink here" rows="5" class="w-full p-2 border border-gray-300 rounded"></textarea>
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button id="cancel-import-version-btn" class="tool-button bg-gray-200 mr-2">Cancel</button>
+                    <button id="confirm-import-version-btn" class="tool-button bg-blue-500 text-white hover:bg-blue-600">Import</button>
+                </div>
+            </div>
+        </div>
+
     <script>
         // Main application state
         const appState = {
@@ -395,6 +431,20 @@
         const saveVersionNameBtn = document.getElementById('save-version-btn');
         const cancelVersionBtn = document.getElementById('cancel-version-btn');
         const modalCloseVersion = document.querySelector('.modal-close-version');
+        
+        // Save new version modal elements
+        const saveNewVersionModal = document.getElementById('save-new-version-modal');
+        const newVersionNameInput = document.getElementById('new-version-name');
+        const confirmSaveNewVersionBtn = document.getElementById('confirm-save-new-version-btn');
+        const cancelSaveNewVersionBtn = document.getElementById('cancel-save-new-version-btn');
+        const modalCloseSaveVersion = document.querySelector('.modal-close-save-version');
+        
+        // Import version modal elements
+        const importVersionModal = document.getElementById('import-version-modal');
+        const importVersionDataInput = document.getElementById('import-version-data');
+        const confirmImportVersionBtn = document.getElementById('confirm-import-version-btn');
+        const cancelImportVersionBtn = document.getElementById('cancel-import-version-btn');
+        const modalCloseImportVersion = document.querySelector('.modal-close-import-version');
         
         // Load configuration from config.json
         async function loadConfiguration() {
@@ -1989,28 +2039,46 @@
             redrawCanvas();
         }
 
+        // Function to open the save new version modal
+        function openSaveNewVersionModal() {
+            newVersionNameInput.value = 'Version ' + (appState.versions.length + 1);
+            saveNewVersionModal.style.display = 'flex';
+        }
+        
+        // Function to close the save new version modal
+        function closeSaveNewVersionModal() {
+            saveNewVersionModal.style.display = 'none';
+        }
+        
         // Function to save a new version
         function saveNewVersion() {
-            const versionName = prompt('Enter a name for this version:', 'Version ' + (appState.versions.length + 1));
-            if (versionName) {
-                // Check for duplicate names and make unique
-                const uniqueName = getUniqueVersionName(versionName);
-                
-                const newVersion = {
-                    timestamp: Date.now(),
-                    versionName: uniqueName,
-                    data: {
-                        zoneItems: JSON.parse(JSON.stringify(appState.zoneItems)),
-                        scenarios: JSON.parse(JSON.stringify(appState.scenarios)),
-                        shapes: JSON.parse(JSON.stringify(appState.shapes)),
-                        usedColors: JSON.parse(JSON.stringify(appState.usedColors)),
-                        currentScenario: appState.currentScenario
-                    }
-                };
-                appState.versions.push(newVersion);
-                renderVersions(); // Update the UI
-                localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
+            const versionName = newVersionNameInput.value.trim();
+            
+            if (!versionName) {
+                alert('Please enter a name for the version.');
+                return;
             }
+            
+            // Check for duplicate names and make unique
+            const uniqueName = getUniqueVersionName(versionName);
+            
+            const newVersion = {
+                timestamp: Date.now(),
+                versionName: uniqueName,
+                data: {
+                    zoneItems: JSON.parse(JSON.stringify(appState.zoneItems)),
+                    scenarios: JSON.parse(JSON.stringify(appState.scenarios)),
+                    shapes: JSON.parse(JSON.stringify(appState.shapes)),
+                    usedColors: JSON.parse(JSON.stringify(appState.usedColors)),
+                    currentScenario: appState.currentScenario
+                }
+            };
+            
+            appState.versions.push(newVersion);
+            renderVersions(); // Update the UI
+            localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
+            
+            closeSaveNewVersionModal();
         }
 
         // Function to load a version
@@ -2150,44 +2218,62 @@
             }
         }
 
+        // Function to open the import version modal
+        function openImportVersionModal() {
+            importVersionDataInput.value = '';
+            importVersionModal.style.display = 'flex';
+        }
+        
+        // Function to close the import version modal
+        function closeImportVersionModal() {
+            importVersionModal.style.display = 'none';
+        }
+        
         // Function to import a version from the clipboard
         function importVersion() {
-            const data = prompt('Paste version data or deeplink here:');
-            if (data && data.trim() !== '') {
-                try {
-                    let parsedData;
-                    
-                    // Check if it's a deeplink
-                    if (data.includes('#version=')) {
-                        const hashPart = data.split('#version=')[1];
-                        const decodedData = decodeURIComponent(hashPart);
-                        parsedData = JSON.parse(decodedData);
-                    } else {
-                        // Try to parse as direct JSON
-                        parsedData = JSON.parse(data);
-                    }
-                    
-                    if (!parsedData.zoneItems || !parsedData.scenarios || !parsedData.shapes ||
-                        !parsedData.usedColors || parsedData.currentScenario === undefined) {
-                        throw new Error('Invalid version data format.');
-                    }
-                    
-                    // Create a unique name
-                    const uniqueName = getUniqueVersionName('Imported Version');
-                    
-                    const newVersion = {
-                        timestamp: Date.now(),
-                        versionName: uniqueName,
-                        data: parsedData
-                    };
-                    appState.versions.push(newVersion);
-                    renderVersions(); // Update the UI
-                    localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
-                    alert(`Version "${uniqueName}" imported successfully!`);
-                } catch (err) {
-                    console.error('Failed to import version data: ', err);
-                    alert('Invalid version data or deeplink.');
+            const data = importVersionDataInput.value.trim();
+            
+            if (!data) {
+                alert('Please enter version data or a deeplink.');
+                return;
+            }
+            
+            try {
+                let parsedData;
+                
+                // Check if it's a deeplink
+                if (data.includes('#version=')) {
+                    const hashPart = data.split('#version=')[1];
+                    const decodedData = decodeURIComponent(hashPart);
+                    parsedData = JSON.parse(decodedData);
+                } else {
+                    // Try to parse as direct JSON
+                    parsedData = JSON.parse(data);
                 }
+                
+                if (!parsedData.zoneItems || !parsedData.scenarios || !parsedData.shapes ||
+                    !parsedData.usedColors || parsedData.currentScenario === undefined) {
+                    throw new Error('Invalid version data format.');
+                }
+                
+                // Create a unique name
+                const uniqueName = getUniqueVersionName('Imported Version');
+                
+                const newVersion = {
+                    timestamp: Date.now(),
+                    versionName: uniqueName,
+                    data: parsedData
+                };
+                
+                appState.versions.push(newVersion);
+                renderVersions(); // Update the UI
+                localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
+                
+                closeImportVersionModal();
+                alert(`Version "${uniqueName}" imported successfully!`);
+            } catch (err) {
+                console.error('Failed to import version data: ', err);
+                alert('Invalid version data or deeplink.');
             }
         }
         // --- End Scenario Modal Logic ---
@@ -2231,7 +2317,7 @@
                 input.onchange = handleBackgroundUpload;
                 input.click();
             });
-            importVersionBtn.addEventListener('click', importVersion);
+            importVersionBtn.addEventListener('click', openImportVersionModal);
             
             downloadPngBtn.addEventListener('click', downloadCanvasAsPNG);
             undoBtn.addEventListener('click', undoLastAction);
@@ -2252,10 +2338,20 @@
             saveVersionNameBtn.addEventListener('click', saveVersionName);
             cancelVersionBtn.addEventListener('click', closeVersionModal);
             modalCloseVersion.addEventListener('click', closeVersionModal);
+            
+            // Save new version modal event listeners
+            confirmSaveNewVersionBtn.addEventListener('click', saveNewVersion);
+            cancelSaveNewVersionBtn.addEventListener('click', closeSaveNewVersionModal);
+            modalCloseSaveVersion.addEventListener('click', closeSaveNewVersionModal);
+            
+            // Import version modal event listeners
+            confirmImportVersionBtn.addEventListener('click', importVersion);
+            cancelImportVersionBtn.addEventListener('click', closeImportVersionModal);
+            modalCloseImportVersion.addEventListener('click', closeImportVersionModal);
 
             //header
-            const saveVersionBtn = document.getElementById("save-version-btn");
-            saveVersionBtn.addEventListener("click", saveNewVersion);
+            const headerSaveVersionBtn = document.getElementById("save-version-btn");
+            headerSaveVersionBtn.addEventListener("click", openSaveNewVersionModal);
 
             // Set up touch events for mobile
             let touchStartX = 0;
