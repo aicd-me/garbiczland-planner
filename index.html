@@ -190,12 +190,18 @@
             <div class="text-xl font-bold text-gray-800">Garbiczland Planner</div>
             <div class="flex items-center">
                 <div class="mr-4 flex items-center">
+                    <button id="import-version-btn" class="tool-button mr-2">
+                        <i class="fas fa-file-import"></i> Import Version
+                    </button>
+                    <button id="save-version-btn" class="tool-button mr-2">
+                        <i class="fas fa-save"></i> Save Version
+                    </button>
                     <span class="text-sm text-gray-600 mr-2">Mode:</span>
                     <button id="edit-shapes-btn" class="tool-button">
                         <i class="fas fa-draw-polygon"></i> Draw Mode
                     </button>
                 </div>
-                <button id="upload-bg-btn" class="tool-button mr-2">
+                <button id="upload-bg-btn" class="tool-button">
                     <i class="fas fa-image"></i> Upload Background
                 </button>
                 <button id="download-png-btn" class="tool-button">
@@ -230,7 +236,7 @@
                     <i class="fas fa-plus"></i> Add New Scenario
                 </button>
                 <div id="scenarios-container" class="space-y-2 mb-6"></div>
-                <h3 class="section-title mt-6">Drawing Controls</h3>
+                <h3 class="section-title mt-6">Controls</h3>
                 <button id="undo-btn" class="tool-button mb-2 w-full">
                     <i class="fas fa-undo"></i> Undo (Ctrl+Z)
                 </button>
@@ -272,6 +278,7 @@
             </div>
         </div>
     </div>
+    
         <!-- Add/Edit Scenario Modal -->
         <div id="scenario-modal" class="modal">
             <div class="modal-content">
@@ -318,8 +325,8 @@
             backgroundImage: null,
             editingItemId: null,
             configLoaded: false,  // Track if config has been loaded
+            versions: [],
             
-            // Color palette for auto-generating unique colors
             colorPalette: [
                 '#FFFFAA', '#FFFF00', '#B2B200', '#FFA500', '#000000',
                 '#FF0000', '#FF66FF', '#0000FF', '#00FF00', '#800080',
@@ -335,6 +342,7 @@
         const zoneContainer = document.getElementById('zone-container');
         const scenariosContainer = document.getElementById('scenarios-container');
         const uploadBgBtn = document.getElementById('upload-bg-btn');
+        const importVersionBtn = document.getElementById('import-version-btn');
         const downloadPngBtn = document.getElementById('download-png-btn');
         const undoBtn = document.getElementById('undo-btn');
         const editShapesBtn = document.getElementById('edit-shapes-btn');
@@ -356,6 +364,7 @@
         const saveScenarioBtn = document.getElementById('save-scenario-btn');
         const cancelScenarioBtn = document.getElementById('cancel-scenario-btn');
         const modalCloseScenario = document.querySelector('.modal-close-scenario');
+        const versionsContainer = document.getElementById('scenarios-container');
         
         // Load configuration from config.json
         async function loadConfiguration() {
@@ -717,7 +726,7 @@
             scenariosContainer.innerHTML = '';
             
             // Create header for scenario selection
-            const scenarioHeader = document.createElement('div');
+            let scenarioHeader = document.createElement('div');
             scenarioHeader.className = 'mb-4';
             scenarioHeader.innerHTML = '<p class="text-sm text-gray-600 mb-2">Select active scenario:</p>';
             scenariosContainer.appendChild(scenarioHeader);
@@ -777,6 +786,53 @@
                 });
 
                 scenariosContainer.appendChild(scenarioItem);
+            });
+
+            const versionHeader = document.createElement('div');
+            versionHeader.className = 'mb-4 mt-8';
+            versionHeader.innerHTML = '<p class="text-sm text-gray-600 mb-2">Saved versions:</p>';
+            scenariosContainer.appendChild(versionHeader);
+
+            if(appState.versions.length > 0){
+                appState.versions.forEach(version => {
+                    const versionItem = document.createElement('div');
+                    versionItem.className = 'scenario-item';
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = version.versionName;
+                    
+                    const controls = document.createElement('div');
+                    controls.className = 'flex items-center';
+                    const loadBtn = document.createElement('button');
+                    loadBtn.innerHTML = '<i class="fas fa-upload"></i>';
+                    loadBtn.className = 'zone-control mr-2';
+                    loadBtn.title = 'Load Version';
+                    loadBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        loadVersion(version);
+                    };
+                    const shareBtn = document.createElement('button');
+                    shareBtn.innerHTML = '<i class="fas fa-share-alt"></i>';
+                    shareBtn.className = 'zone-control mr-2';
+                    shareBtn.title = 'Share Version';
+                    shareBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        shareVersion(version);
+                    };
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                    deleteBtn.className = 'zone-control mr-2';
+                    deleteBtn.title = 'Delete Version';
+                    deleteBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        deleteVersion(version);
+                    };
+                    controls.appendChild(loadBtn);
+                    controls.appendChild(shareBtn);
+                    controls.appendChild(deleteBtn);
+                    versionItem.appendChild(nameSpan);
+                    versionItem.appendChild(controls);
+                    scenariosContainer.appendChild(versionItem);
+                });
             });
             
             // Add description for the current scenario
@@ -1725,6 +1781,83 @@
             redrawCanvas();
         }
 
+        // Function to save a new version
+        function saveNewVersion() {
+            const versionName = prompt('Enter a name for this version:', 'Version ' + (appState.versions.length + 1));
+            if (versionName) {
+                const newVersion = {
+                    timestamp: Date.now(),
+                    versionName: versionName,
+                    data: {
+                        zoneItems: JSON.parse(JSON.stringify(appState.zoneItems)),
+                        scenarios: JSON.parse(JSON.stringify(appState.scenarios)),
+                        shapes: JSON.parse(JSON.stringify(appState.shapes)),
+                        usedColors: JSON.parse(JSON.stringify(appState.usedColors)),
+                        currentScenario: appState.currentScenario
+                    }
+                };
+                appState.versions.push(newVersion);
+                renderScenarios(); // Update the UI
+                localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
+            }
+        }
+
+        // Function to load a version
+        function loadVersion(version) {
+            if (confirm('Are you sure you want to load this version? Current data will be replaced.')) {
+                appState.zoneItems = JSON.parse(JSON.stringify(version.data.zoneItems));
+                appState.scenarios = JSON.parse(JSON.stringify(version.data.scenarios));
+                appState.shapes = JSON.parse(JSON.stringify(version.data.shapes));
+                appState.usedColors = JSON.parse(JSON.stringify(version.data.usedColors));
+                appState.currentScenario = version.data.currentScenario;
+                
+                renderZoneItems();
+                renderScenarios();
+                redrawCanvas();
+            }
+        }
+
+        // Function to delete a version
+        function deleteVersion(version) {
+            if (confirm(`Are you sure you want to delete the version: ${version.versionName}?`)) {
+                appState.versions = appState.versions.filter(v => v.timestamp !== version.timestamp);
+                renderScenarios(); // Update the UI
+                localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
+            }
+        }
+
+        // Function to rename a version
+        function renameVersion(version) {
+            const newName = prompt('Enter a new name for this version:', version.versionName);
+            if (newName && newName.trim() !== '') {
+                version.versionName = newName;
+                renderScenarios(); // Update the UI
+                localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
+            }
+        }
+
+        // Function to share a version (copy to clipboard)
+        function shareVersion(version) {
+            const versionData = JSON.stringify(version.data);
+            navigator.clipboard.writeText(versionData).then(() => {
+                alert('Version data copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy version data: ', err);
+                alert('Failed to copy version data to clipboard.');
+            });
+        }
+
+        // Function to import a version from the clipboard
+        function importVersion() {
+            const data = prompt('Paste version data here:');
+            if (data) {
+                try{
+                  console.log(data);
+                }catch(err){
+                      alert('Invalid version data.');
+                }
+            }
+        }
         // --- End Scenario Modal Logic ---
 
         // Initialize application
@@ -1764,6 +1897,7 @@
                 input.onchange = handleBackgroundUpload;
                 input.click();
             });
+            importVersionBtn.addEventListener('click', importVersion);
             
             downloadPngBtn.addEventListener('click', downloadCanvasAsPNG);
             undoBtn.addEventListener('click', undoLastAction);
@@ -1779,6 +1913,10 @@
             saveScenarioBtn.addEventListener('click', saveScenario);
             cancelScenarioBtn.addEventListener('click', closeScenarioModal);
             modalCloseScenario.addEventListener('click', closeScenarioModal);
+
+            //header
+            const saveVersionBtn = document.getElementById("save-version-btn");
+            saveVersionBtn.addEventListener("click", saveNewVersion);
 
             // Set up touch events for mobile
             let touchStartX = 0;
@@ -1846,12 +1984,12 @@
                         appState.usedColors = parsedData.usedColors;
                     }
                     
-                    if (parsedData.currentScenario) {
-                        appState.currentScenario = parsedData.currentScenario;
+                    if(parsedData.versions){
+                        appState.versions = parsedData.versions;
                     }
-                    
-                    if (parsedData.backgroundImageUrl) {
-                        const img = new Image();
+
+
+                    const img = new Image();
                         img.onload = function() {
                             appState.backgroundImage = img;
                             canvas.width = img.width > 1000 ? 1000 : img.width;
@@ -1882,20 +2020,18 @@
                     shapes: appState.shapes,
                     usedColors: appState.usedColors,
                     currentScenario: appState.currentScenario,
-                    backgroundImageUrl: appState.backgroundImage ? appState.backgroundImage.src : null
+                    backgroundImageUrl: appState.backgroundImage ? appState.backgroundImage.src : null,
+                    versions: appState.versions
                 };
                 
                 localStorage.setItem('garbiczlandData', JSON.stringify(dataToSave));
             }, 10000); // Auto-save every 10 seconds
         }
         
-        // Initialize the application when the document is loaded
-        document.addEventListener('DOMContentLoaded', () => {
-            initApp().catch(error => {
-                console.error('Error initializing app:', error);
-            });
+         document.addEventListener('DOMContentLoaded', () => {
+             initApp().catch(error => {console.error('Error initializing app:', error);});
         });
     </script>
-</body>
+</body></html>
 </html>
 
