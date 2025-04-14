@@ -1993,9 +1993,12 @@
         function saveNewVersion() {
             const versionName = prompt('Enter a name for this version:', 'Version ' + (appState.versions.length + 1));
             if (versionName) {
+                // Check for duplicate names and make unique
+                const uniqueName = getUniqueVersionName(versionName);
+                
                 const newVersion = {
                     timestamp: Date.now(),
-                    versionName: versionName,
+                    versionName: uniqueName,
                     data: {
                         zoneItems: JSON.parse(JSON.stringify(appState.zoneItems)),
                         scenarios: JSON.parse(JSON.stringify(appState.scenarios)),
@@ -2072,39 +2075,118 @@
             closeVersionModal();
         }
 
-        // Function to share a version (copy to clipboard)
+        // Function to check for duplicate version names and add " copy" if needed
+        function getUniqueVersionName(name) {
+            // Check if the name already exists
+            let newName = name;
+            let counter = 1;
+            
+            // First check if the name exists
+            while (appState.versions.some(v => v.versionName === newName)) {
+                if (counter === 1) {
+                    newName = `${name} copy`;
+                } else {
+                    newName = `${name} copy (${counter})`;
+                }
+                counter++;
+            }
+            
+            return newName;
+        }
+        
+        // Function to share a version (copy deeplink to clipboard)
         function shareVersion(version) {
+            // Create a deeplink with the version data in the URL hash
             const versionData = JSON.stringify(version.data);
-            navigator.clipboard.writeText(versionData).then(() => {
-                alert('Version data copied to clipboard!');
+            const encodedData = encodeURIComponent(versionData);
+            const deeplink = `${window.location.origin}${window.location.pathname}#version=${encodedData}`;
+            
+            navigator.clipboard.writeText(deeplink).then(() => {
+                alert('Deeplink copied to clipboard! Share this link to share your version.');
             }).catch(err => {
-                console.error('Failed to copy version data: ', err);
-                alert('Failed to copy version data to clipboard.');
+                console.error('Failed to copy deeplink: ', err);
+                alert('Failed to copy deeplink to clipboard.');
             });
+        }
+        
+        // Function to check for a version in the URL hash and import it
+        function checkForVersionInHash() {
+            if (window.location.hash) {
+                const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                const versionData = hashParams.get('version');
+                
+                if (versionData) {
+                    try {
+                        const decodedData = decodeURIComponent(versionData);
+                        const parsedData = JSON.parse(decodedData);
+                        
+                        if (!parsedData.zoneItems || !parsedData.scenarios || !parsedData.shapes ||
+                            !parsedData.usedColors || parsedData.currentScenario === undefined) {
+                            throw new Error('Invalid version data format.');
+                        }
+                        
+                        // Create a new version with a unique name
+                        const versionName = getUniqueVersionName('Imported Version');
+                        
+                        const newVersion = {
+                            timestamp: Date.now(),
+                            versionName: versionName,
+                            data: parsedData
+                        };
+                        
+                        appState.versions.push(newVersion);
+                        renderVersions();
+                        localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
+                        
+                        // Clear the hash to avoid reimporting on refresh
+                        window.location.hash = '';
+                        
+                        alert(`Version "${versionName}" has been imported successfully!`);
+                    } catch (err) {
+                        console.error('Failed to import version from URL: ', err);
+                        alert('Invalid version data in URL.');
+                    }
+                }
+            }
         }
 
         // Function to import a version from the clipboard
         function importVersion() {
-            const data = prompt('Paste version data here:');
+            const data = prompt('Paste version data or deeplink here:');
             if (data && data.trim() !== '') {
                 try {
-                    const parsedData = JSON.parse(data);
-                    if (!parsedData.zoneItems || !parsedData.scenarios || !parsedData.shapes || !parsedData.usedColors || parsedData.currentScenario === undefined) {
+                    let parsedData;
+                    
+                    // Check if it's a deeplink
+                    if (data.includes('#version=')) {
+                        const hashPart = data.split('#version=')[1];
+                        const decodedData = decodeURIComponent(hashPart);
+                        parsedData = JSON.parse(decodedData);
+                    } else {
+                        // Try to parse as direct JSON
+                        parsedData = JSON.parse(data);
+                    }
+                    
+                    if (!parsedData.zoneItems || !parsedData.scenarios || !parsedData.shapes ||
+                        !parsedData.usedColors || parsedData.currentScenario === undefined) {
                         throw new Error('Invalid version data format.');
                     }
+                    
+                    // Create a unique name
+                    const uniqueName = getUniqueVersionName('Imported Version');
+                    
                     const newVersion = {
                         timestamp: Date.now(),
-                        versionName: 'Imported Version',
+                        versionName: uniqueName,
                         data: parsedData
                     };
                     appState.versions.push(newVersion);
                     renderVersions(); // Update the UI
                     localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
-                    alert('Version imported successfully!');
+                    alert(`Version "${uniqueName}" imported successfully!`);
                 } catch (err) {
                     console.error('Failed to import version data: ', err);
-                    alert('Invalid version data.');
-                    
+                    alert('Invalid version data or deeplink.');
                 }
             }
         }
@@ -2264,6 +2346,9 @@
                 } catch (error) {
                     if(appState.versions.length > 0){
                         loadVersionsFromLocalStorage();
+                        
+                        // Check for version in URL hash
+                        checkForVersionInHash();
                     }
                     console.error('Error loading saved data:', error);
                 }
