@@ -1227,17 +1227,18 @@
         // Handle mouse down event
         function handleMouseDown(e) {
             if (e.button === 2) return; // Handle right-click separately
-            
+
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            
-            if (appState.editMode) {
-                // In edit mode, check if we clicked on a shape or point
-                const closest = findClosestPointAndLine(x, y);
-                
+
+            // Allow shape/point manipulation in both modes
+            const closest = findClosestPointAndLine(x, y);
+
+            if (appState.editMode || appState.currentShape.length === 0) {
+                // In edit mode, or in draw mode with no in-progress shape, allow manipulation
                 if (closest && closest.type === 'point') {
-                    // We clicked on a point, select it for dragging
+                    // Clicked on a point: select for dragging
                     appState.selectedShape = closest.shape;
                     appState.selectedPoint = closest.index;
                     appState.isDragging = true;
@@ -1245,56 +1246,80 @@
                     redrawCanvas();
                     return;
                 }
-                
-                // Check if we clicked inside a shape
+
+                if (closest && closest.type === 'line') {
+                    // Clicked on an edge: add a new point to the edge
+                    const newPoint = {
+                        x: closest.point.x,
+                        y: closest.point.y
+                    };
+                    closest.shape.points.splice(closest.index + 1, 0, newPoint);
+
+                    const action = {
+                        type: 'add_shape_point',
+                        shape: closest.shape,
+                        pointIndex: closest.index + 1,
+                        point: newPoint
+                    };
+                    appState.undoStack.push(action);
+
+                    redrawCanvas();
+                    return;
+                }
+
+                // Check if we clicked inside a shape (for dragging the whole shape)
                 for (let i = appState.shapes.length - 1; i >= 0; i--) {
                     const shape = appState.shapes[i];
                     const zoneItem = appState.zoneItems.find(item => item.id === shape.zoneItemId);
-                    
+
                     if (!zoneItem || !zoneItem.active) continue;
-                    
+
                     if (isPointInShape(x, y, shape)) {
                         appState.selectedShape = shape;
+                        appState.selectedPoint = null;
                         appState.isDragging = true;
                         appState.dragStartPos = { x, y };
                         redrawCanvas();
                         return;
                     }
                 }
-                
+
                 appState.selectedShape = null;
                 appState.selectedPoint = null;
                 redrawCanvas();
-            } else {
-                // In draw mode, add points to the current shape
+            }
+
+            // In draw mode, if a shape is being created, allow adding points as before
+            if (!appState.editMode && appState.currentShape.length > 0) {
                 if (!appState.currentZoneItem) {
                     alert('Please select a zone item before drawing.');
                     return;
                 }
-                
+
                 appState.currentShape.push({ x, y });
-                
+
                 const action = {
                     type: 'add_point',
                     point: { x, y },
                     shapeIndex: appState.currentShape.length - 1
                 };
                 appState.undoStack.push(action);
-                
+
                 redrawCanvas();
             }
         }
-        
+
         // Handle mouse move event
         function handleMouseMove(e) {
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            
-            if (appState.editMode && appState.isDragging) {
+
+            // Allow dragging in both edit and draw mode
+            if ((appState.editMode || appState.selectedShape) && appState.isDragging) {
                 const deltaX = x - appState.dragStartPos.x;
                 const deltaY = y - appState.dragStartPos.y;
-                
+
                 if (appState.selectedShape) {
                     if (appState.selectedPoint !== null) {
                         // Dragging a single point
@@ -1307,10 +1332,53 @@
                             point.y += deltaY;
                         });
                     }
-                    
+
                     appState.dragStartPos = { x, y };
                     redrawCanvas();
                 }
+            }
+        }
+
+        // Handle double-click event for adding a point to an edge in draw mode
+        function handleCanvasDblClick(e) {
+            if (appState.editMode) return; // Only in draw mode
+            if (!appState.selectedShape) return; // Only if a shape is selected
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // Only allow adding to the selected shape
+            const threshold = 10;
+            // Find the closest line on the selected shape
+            let closestLine = null;
+            let closestDistance = Infinity;
+            let closestIndex = -1;
+            const points = appState.selectedShape.points;
+            for (let i = 0; i < points.length; i++) {
+                const p1 = points[i];
+                const p2 = points[(i + 1) % points.length];
+                const closest = closestPointOnLine(x, y, p1.x, p1.y, p2.x, p2.y);
+                if (closest.distance < threshold && closest.distance < closestDistance) {
+                    closestDistance = closest.distance;
+                    closestLine = closest;
+                    closestIndex = i;
+                }
+            }
+            if (closestLine) {
+                // Insert new point at the double-clicked position
+                const newPoint = { x: closestLine.x, y: closestLine.y };
+                appState.selectedShape.points.splice(closestIndex + 1, 0, newPoint);
+
+                const action = {
+                    type: 'add_shape_point',
+                    shape: appState.selectedShape,
+                    pointIndex: closestIndex + 1,
+                    point: newPoint
+                };
+                appState.undoStack.push(action);
+
+                redrawCanvas();
             }
         }
         
@@ -1913,6 +1981,7 @@
             canvas.addEventListener('mousedown', handleMouseDown);
             canvas.addEventListener('mousemove', handleMouseMove);
             canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('dblclick', handleCanvasDblClick);
             document.addEventListener('keydown', handleKeyDown);
             
             uploadBgBtn.addEventListener('click', () => {
