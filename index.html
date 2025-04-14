@@ -197,9 +197,6 @@
                         <i class="fas fa-save"></i> Save Version
                     </button>
                     <span class="text-sm text-gray-600 mr-2">Mode:</span>
-                    <button id="edit-shapes-btn" class="tool-button">
-                        <i class="fas fa-draw-polygon"></i> Draw Mode
-                    </button>
                 </div>
                 <button id="upload-bg-btn" class="tool-button">
                     <i class="fas fa-image"></i> Upload Background
@@ -307,6 +304,24 @@
             </div>
         </div>
 
+        <!-- Rename Version Modal -->
+        <div id="version-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="version-modal-title" class="text-lg font-semibold">Rename Version</h3>
+                    <span class="modal-close-version" style="cursor:pointer;">&times;</span>
+                </div>
+                <div class="input-group">
+                    <label for="version-name">Name:</label>
+                    <input type="text" id="version-name" placeholder="Enter version name">
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button id="cancel-version-btn" class="tool-button bg-gray-200 mr-2">Cancel</button>
+                    <button id="save-version-btn" class="tool-button bg-blue-500 text-white hover:bg-blue-600">Save</button>
+                </div>
+            </div>
+        </div>
+
     <script>
         // Main application state
         const appState = {
@@ -320,7 +335,6 @@
             selectedPoint: null,
             isDragging: false,
             dragStartPos: { x: 0, y: 0 },
-            editMode: false,
             undoStack: [],
             backgroundImage: null,
             editingItemId: null,
@@ -365,6 +379,14 @@
         const cancelScenarioBtn = document.getElementById('cancel-scenario-btn');
         const modalCloseScenario = document.querySelector('.modal-close-scenario');
         const versionsContainer = document.getElementById('scenarios-container');
+        
+        // Version modal elements
+        const versionModal = document.getElementById('version-modal');
+        const versionModalTitle = document.getElementById('version-modal-title');
+        const versionNameInput = document.getElementById('version-name');
+        const saveVersionNameBtn = document.getElementById('save-version-btn');
+        const cancelVersionBtn = document.getElementById('cancel-version-btn');
+        const modalCloseVersion = document.querySelector('.modal-close-version');
         
         // Load configuration from config.json
         async function loadConfiguration() {
@@ -802,6 +824,8 @@
                     
                     const controls = document.createElement('div');
                     controls.className = 'flex items-center';
+                    
+                    // Load button
                     const loadBtn = document.createElement('button');
                     loadBtn.innerHTML = '<i class="fas fa-upload"></i>';
                     loadBtn.className = 'zone-control mr-2';
@@ -810,6 +834,18 @@
                         e.stopPropagation();
                         loadVersion(version);
                     };
+                    
+                    // Edit name button
+                    const editBtn = document.createElement('button');
+                    editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+                    editBtn.className = 'zone-control mr-2';
+                    editBtn.title = 'Rename Version';
+                    editBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        renameVersion(version);
+                    };
+                    
+                    // Share button
                     const shareBtn = document.createElement('button');
                     shareBtn.innerHTML = '<i class="fas fa-share-alt"></i>';
                     shareBtn.className = 'zone-control mr-2';
@@ -818,6 +854,8 @@
                         e.stopPropagation();
                         shareVersion(version);
                     };
+                    
+                    // Delete button
                     const deleteBtn = document.createElement('button');
                     deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
                     deleteBtn.className = 'zone-control mr-2';
@@ -826,7 +864,9 @@
                         e.stopPropagation();
                         deleteVersion(version);
                     };
+                    
                     controls.appendChild(loadBtn);
+                    controls.appendChild(editBtn);
                     controls.appendChild(shareBtn);
                     controls.appendChild(deleteBtn);
                     versionItem.appendChild(nameSpan);
@@ -850,7 +890,6 @@
             appState.currentZoneItem = id;
             appState.selectedShape = null;
             appState.selectedPoint = null;
-            appState.editMode = false;
             renderZoneItems();
             redrawCanvas();
         }
@@ -1082,22 +1121,7 @@
             redrawCanvas();
         }
         
-        // Toggle edit mode
-        function toggleEditMode() {
-            appState.editMode = !appState.editMode;
-            appState.selectedShape = null;
-            appState.selectedPoint = null;
-            
-            if (appState.editMode) {
-                canvas.style.cursor = 'pointer';
-                editShapesBtn.innerHTML = '<i class="fas fa-draw-polygon"></i> Draw Mode';
-            } else {
-                canvas.style.cursor = 'crosshair';
-                editShapesBtn.innerHTML = '<i class="fas fa-edit"></i> Edit Shapes';
-            }
-            
-            redrawCanvas();
-        }
+        // (Removed toggleEditMode and edit/draw mode logic)
         
         // Check if a point is inside a shape
         function isPointInShape(x, y, shape) {
@@ -1235,67 +1259,78 @@
             // Allow shape/point manipulation in both modes
             const closest = findClosestPointAndLine(x, y);
 
-            if (appState.editMode || appState.currentShape.length === 0) {
-                // In edit mode, or in draw mode with no in-progress shape, allow manipulation
-                if (closest && closest.type === 'point') {
-                    // Clicked on a point: select for dragging
-                    appState.selectedShape = closest.shape;
-                    appState.selectedPoint = closest.index;
+            // Check if we're clicking on or manipulating an existing shape
+            if (closest && closest.type === 'point') {
+                // Clicked on a point: select for dragging
+                appState.selectedShape = closest.shape;
+                appState.selectedPoint = closest.index;
+                appState.isDragging = true;
+                appState.dragStartPos = { x, y };
+                redrawCanvas();
+                return;
+            }
+
+            if (closest && closest.type === 'line') {
+                // Clicked on an edge: add a new point to the edge
+                const newPoint = {
+                    x: closest.point.x,
+                    y: closest.point.y
+                };
+                closest.shape.points.splice(closest.index + 1, 0, newPoint);
+
+                const action = {
+                    type: 'add_shape_point',
+                    shape: closest.shape,
+                    pointIndex: closest.index + 1,
+                    point: newPoint
+                };
+                appState.undoStack.push(action);
+
+                redrawCanvas();
+                return;
+            }
+
+            // Check if we clicked inside a shape (for dragging the whole shape)
+            for (let i = appState.shapes.length - 1; i >= 0; i--) {
+                const shape = appState.shapes[i];
+                const zoneItem = appState.zoneItems.find(item => item.id === shape.zoneItemId);
+
+                if (!zoneItem || !zoneItem.active) continue;
+
+                if (isPointInShape(x, y, shape)) {
+                    appState.selectedShape = shape;
+                    appState.selectedPoint = null;
                     appState.isDragging = true;
                     appState.dragStartPos = { x, y };
                     redrawCanvas();
                     return;
                 }
-
-                if (closest && closest.type === 'line') {
-                    // Clicked on an edge: add a new point to the edge
-                    const newPoint = {
-                        x: closest.point.x,
-                        y: closest.point.y
-                    };
-                    closest.shape.points.splice(closest.index + 1, 0, newPoint);
-
-                    const action = {
-                        type: 'add_shape_point',
-                        shape: closest.shape,
-                        pointIndex: closest.index + 1,
-                        point: newPoint
-                    };
-                    appState.undoStack.push(action);
-
-                    redrawCanvas();
-                    return;
-                }
-
-                // Check if we clicked inside a shape (for dragging the whole shape)
-                for (let i = appState.shapes.length - 1; i >= 0; i--) {
-                    const shape = appState.shapes[i];
-                    const zoneItem = appState.zoneItems.find(item => item.id === shape.zoneItemId);
-
-                    if (!zoneItem || !zoneItem.active) continue;
-
-                    if (isPointInShape(x, y, shape)) {
-                        appState.selectedShape = shape;
-                        appState.selectedPoint = null;
-                        appState.isDragging = true;
-                        appState.dragStartPos = { x, y };
-                        redrawCanvas();
-                        return;
-                    }
-                }
-
-                appState.selectedShape = null;
-                appState.selectedPoint = null;
-                redrawCanvas();
             }
 
-            // In draw mode, if a shape is being created, allow adding points as before
-            if (!appState.editMode && appState.currentShape.length > 0) {
-                if (!appState.currentZoneItem) {
+            // If we didn't click on any existing shape, either start a new shape or add to current shape
+            if (appState.currentShape.length === 0) {
+                // Start a new shape if we have a zone selected
+                if (appState.currentZoneItem) {
+                    appState.selectedShape = null;
+                    appState.selectedPoint = null;
+                    appState.currentShape.push({ x, y });
+                    
+                    const action = {
+                        type: 'add_point',
+                        point: { x, y },
+                        shapeIndex: 0
+                    };
+                    appState.undoStack.push(action);
+                    
+                    redrawCanvas();
+                    return;
+                } else {
                     alert('Please select a zone item before drawing.');
                     return;
                 }
-
+            }
+            // If we already have a shape in progress, add to it
+            if (appState.currentShape.length > 0) {
                 appState.currentShape.push({ x, y });
 
                 const action = {
@@ -1315,8 +1350,8 @@
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
-            // Allow dragging in both edit and draw mode
-            if ((appState.editMode || appState.selectedShape) && appState.isDragging) {
+            // Allow dragging when we have a selected shape and are dragging
+            if (appState.selectedShape && appState.isDragging) {
                 const deltaX = x - appState.dragStartPos.x;
                 const deltaY = y - appState.dragStartPos.y;
 
@@ -1341,7 +1376,6 @@
 
         // Handle double-click event for adding a point to an edge in draw mode
         function handleCanvasDblClick(e) {
-            if (appState.editMode) return; // Only in draw mode
             if (!appState.selectedShape) return; // Only if a shape is selected
 
             const rect = canvas.getBoundingClientRect();
@@ -1384,7 +1418,7 @@
         
         // Handle mouse up event
         function handleMouseUp(e) {
-            if (appState.editMode && appState.isDragging) {
+            if (appState.isDragging) {
                 appState.isDragging = false;
                 
                 // Save the move action for undo
@@ -1407,58 +1441,59 @@
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             
-            if (appState.editMode) {
-                // In edit mode, right-click to add or remove points
-                const closest = findClosestPointAndLine(x, y);
-                
-                if (closest) {
-                    if (closest.type === 'point') {
-                        // Remove the point if it's not the only point
-                        if (closest.shape.points.length > 3) {
-                            closest.shape.points.splice(closest.index, 1);
-                            
-                            const action = {
-                                type: 'remove_point',
-                                shape: closest.shape,
-                                pointIndex: closest.index,
-                                point: closest.point
-                            };
-                            appState.undoStack.push(action);
-                            
-                            redrawCanvas();
-                        }
-                    } else if (closest.type === 'line') {
-                        // Add a new point on the line
-                        const newPoint = {
-                            x: closest.point.x,
-                            y: closest.point.y
-                        };
-                        
-                        closest.shape.points.splice(closest.index + 1, 0, newPoint);
+            // Check if we're interacting with an existing shape
+            const closest = findClosestPointAndLine(x, y);
+            
+            if (closest) {
+                if (closest.type === 'point') {
+                    // Remove the point if it's not the only point
+                    if (closest.shape.points.length > 3) {
+                        closest.shape.points.splice(closest.index, 1);
                         
                         const action = {
-                            type: 'add_shape_point',
+                            type: 'remove_point',
                             shape: closest.shape,
-                            pointIndex: closest.index + 1,
-                            point: newPoint
+                            pointIndex: closest.index,
+                            point: closest.point
                         };
                         appState.undoStack.push(action);
                         
                         redrawCanvas();
+                        return;
                     }
-                }
-            } else {
-                // In draw mode, right-click to remove the last point
-                if (appState.currentShape.length > 0) {
-                    appState.currentShape.pop();
+                } else if (closest.type === 'line') {
+                    // Add a new point on the line
+                    const newPoint = {
+                        x: closest.point.x,
+                        y: closest.point.y
+                    };
+                    
+                    closest.shape.points.splice(closest.index + 1, 0, newPoint);
                     
                     const action = {
-                        type: 'remove_current_point'
+                        type: 'add_shape_point',
+                        shape: closest.shape,
+                        pointIndex: closest.index + 1,
+                        point: newPoint
                     };
                     appState.undoStack.push(action);
                     
                     redrawCanvas();
+                    return;
                 }
+            }
+            
+            // If not interacting with an existing shape, handle current shape being drawn
+            // In draw mode, right-click to remove the last point
+            if (appState.currentShape.length > 0) {
+                appState.currentShape.pop();
+                
+                const action = {
+                    type: 'remove_current_point'
+                };
+                appState.undoStack.push(action);
+                
+                redrawCanvas();
             }
         }
         
@@ -1676,8 +1711,8 @@
                 }
             }
             
-            // In edit mode, draw handles for the selected shape
-            if (appState.editMode && appState.selectedShape) {
+            // Draw handles for the selected shape
+            if (appState.selectedShape) {
                 appState.selectedShape.points.forEach((point, index) => {
                     ctx.beginPath();
                     ctx.arc(point.x, point.y, 6, 0, Math.PI * 2);
@@ -1905,14 +1940,41 @@
             }
         }
 
-        // Function to rename a version
+        // Version being edited
+        appState.editingVersionId = null;
+        
+        // Function to open the rename version modal
         function renameVersion(version) {
-            const newName = prompt('Enter a new name for this version:', version.versionName);
-            if (newName && newName.trim() !== '') {
-                version.versionName = newName;
-                renderScenarios(); // Update the UI
-                localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
+            versionModalTitle.textContent = 'Rename Version';
+            versionNameInput.value = version.versionName;
+            appState.editingVersionId = version.timestamp;
+            versionModal.style.display = 'flex';
+        }
+        
+        // Function to close the version modal
+        function closeVersionModal() {
+            versionModal.style.display = 'none';
+        }
+        
+        // Function to save the renamed version
+        function saveVersionName() {
+            const name = versionNameInput.value.trim();
+            
+            if (!name) {
+                alert('Please enter a name for the version.');
+                return;
             }
+            
+            if (appState.editingVersionId) {
+                const version = appState.versions.find(v => v.timestamp === appState.editingVersionId);
+                if (version) {
+                    version.versionName = name;
+                    renderScenarios(); // Update the UI
+                    localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
+                }
+            }
+            
+            closeVersionModal();
         }
 
         // Function to share a version (copy to clipboard)
@@ -1995,7 +2057,7 @@
             
             downloadPngBtn.addEventListener('click', downloadCanvasAsPNG);
             undoBtn.addEventListener('click', undoLastAction);
-            editShapesBtn.addEventListener('click', toggleEditMode);
+            // Removed editShapesBtn event listener
             addZoneBtn.addEventListener('click', openAddZoneModal);
             
             saveZoneBtn.addEventListener('click', saveZoneItem);
@@ -2007,6 +2069,11 @@
             saveScenarioBtn.addEventListener('click', saveScenario);
             cancelScenarioBtn.addEventListener('click', closeScenarioModal);
             modalCloseScenario.addEventListener('click', closeScenarioModal);
+            
+            // Version modal event listeners
+            saveVersionNameBtn.addEventListener('click', saveVersionName);
+            cancelVersionBtn.addEventListener('click', closeVersionModal);
+            modalCloseVersion.addEventListener('click', closeVersionModal);
 
             //header
             const saveVersionBtn = document.getElementById("save-version-btn");
