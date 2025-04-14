@@ -2005,7 +2005,7 @@
                     }
                 };
                 appState.versions.push(newVersion);
-                renderScenarios(); // Update the UI
+                renderVersions(); // Update the UI
                 localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
             }
         }
@@ -2021,6 +2021,7 @@
                 
                 renderZoneItems();
                 renderScenarios();
+                renderVersions();
                 redrawCanvas();
             }
         }
@@ -2029,7 +2030,7 @@
         function deleteVersion(version) {
             if (confirm(`Are you sure you want to delete the version: ${version.versionName}?`)) {
                 appState.versions = appState.versions.filter(v => v.timestamp !== version.timestamp);
-                renderScenarios(); // Update the UI
+                renderVersions(); // Update the UI
                 localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
             }
         }
@@ -2063,7 +2064,7 @@
                 const version = appState.versions.find(v => v.timestamp === appState.editingVersionId);
                 if (version) {
                     version.versionName = name;
-                    renderScenarios(); // Update the UI
+                    renderVersions(); // Update the UI
                     localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
                 }
             }
@@ -2097,7 +2098,7 @@
                         data: parsedData
                     };
                     appState.versions.push(newVersion);
-                    renderScenarios(); // Update the UI
+                    renderVersions(); // Update the UI
                     localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
                     alert('Version imported successfully!');
                 } catch (err) {
@@ -2129,6 +2130,7 @@
             // Render UI components
             renderZoneItems();
             renderScenarios();
+            renderVersions();
             
             // Prevent context menu on canvas
             canvas.addEventListener('contextmenu', handleContextMenu);
@@ -2258,6 +2260,7 @@
                     
                     renderZoneItems();
                     renderScenarios();
+                    renderVersions();
                 } catch (error) {
                     if(appState.versions.length > 0){
                         loadVersionsFromLocalStorage();
