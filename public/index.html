@@ -102,10 +102,26 @@
         .modal-content {
             background-color: white;
             padding: 20px;
-            border-radius: 8px;
-            width: 90%;
+            border-radius: 16px;
+            width: 95%;
             max-width: 400px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+            transition: all 0.3s cubic-bezier(.4,0,.2,1);
+            animation: modal-fade-in 0.3s;
+        }
+        @media (max-width: 640px) {
+            .modal-content {
+                max-width: 100vw;
+                width: 100vw;
+                height: 100vh;
+                border-radius: 0;
+                padding: 16px 8px;
+                overflow-y: auto;
+            }
+        }
+        @keyframes modal-fade-in {
+            from { opacity: 0; transform: translateY(40px);}
+            to { opacity: 1; transform: translateY(0);}
         }
         
         .modal-header {
@@ -187,7 +203,13 @@
     <div class="flex flex-col h-screen">
         <!-- Header Controls -->
         <header class="bg-white shadow-sm p-3 flex items-center justify-between">
-            <div class="text-xl font-bold text-gray-800">Garbiczland Planner</div>
+            <div class="flex items-center">
+                <!-- Hamburger menu for mobile -->
+                <button id="sidebar-toggle-btn" class="md:hidden mr-3 p-2 rounded hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400" aria-label="Toggle sidebars">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <div class="text-xl font-bold text-gray-800">Garbiczland Planner</div>
+            </div>
             <div class="flex items-center">
                 <div class="mr-4 flex items-center">
                     <button id="import-version-btn" class="tool-button mr-2">
@@ -208,9 +230,9 @@
         </header>
         
         <!-- Main Content Area -->
-        <div class="flex flex-1 overflow-hidden">
+        <div class="flex flex-1 overflow-hidden flex-col md:flex-row">
             <!-- Left Sidebar - Scenarios and Zone Items -->
-            <div class="sidebar bg-white shadow-sm w-1/4 border-r border-gray-200">
+            <div id="left-sidebar" class="sidebar bg-white shadow-sm w-full md:w-1/4 border-b md:border-b-0 md:border-r border-gray-200 order-1 md:order-none transition-transform duration-300 ease-in-out transform md:translate-x-0 -translate-x-full md:block fixed md:static top-16 left-0 z-30 h-[calc(100vh-64px)] md:h-auto overflow-y-auto">
                 <!-- Scenarios Section -->
                 <h2 class="section-title">Scenarios</h2>
                 <button id="add-scenario-btn" class="tool-button mb-4 w-full">
@@ -230,12 +252,14 @@
             </div>
             
             <!-- Main Canvas Area -->
-            <div class="flex-1 flex justify-center items-center bg-gray-50 p-4 overflow-auto">
-                <canvas id="main-canvas" width="1000" height="800"></canvas>
+            <div class="flex-1 flex justify-center items-center bg-gray-50 p-2 sm:p-4 overflow-auto order-3 md:order-none">
+                <div class="w-full h-[40vh] sm:h-[60vh] md:h-[80vh] flex items-center justify-center">
+                    <canvas id="main-canvas" class="w-full h-full max-w-full max-h-full rounded shadow" style="background: #fff;"></canvas>
+                </div>
             </div>
             
             <!-- Right Sidebar - Controls -->
-            <div class="sidebar bg-white shadow-sm w-1/4 border-l border-gray-200">
+            <div id="right-sidebar" class="sidebar bg-white shadow-sm w-full md:w-1/4 border-t md:border-t-0 md:border-l border-gray-200 order-2 md:order-none transition-transform duration-300 ease-in-out transform md:translate-x-0 translate-x-full md:block fixed md:static top-16 right-0 z-30 h-[calc(100vh-64px)] md:h-auto overflow-y-auto">
                 <h3 class="section-title">Controls</h3>
                 <button id="undo-btn" class="tool-button mb-2 w-full">
                     <i class="fas fa-undo"></i> Undo (Ctrl+Z)
@@ -594,8 +618,10 @@
             const img = new Image();
             img.onload = function() {
                 appState.backgroundImage = img;
-                canvas.width = img.width > 1000 ? 1000 : img.width;
-                canvas.height = canvas.width * (img.height / img.width);
+                // Responsive: set canvas size to container, then redraw
+                if (typeof resizeCanvasToContainer === 'function') {
+                    resizeCanvasToContainer();
+                }
                 redrawCanvas();
                 // Enable download button after image is loaded
                 downloadPngBtn.disabled = false;
@@ -1758,15 +1784,10 @@
                     const img = new Image();
                     img.onload = function() {
                         appState.backgroundImage = img;
-                        
-                        // Resize canvas to match image aspect ratio
-                        const aspectRatio = img.width / img.height;
-                        const canvasWidth = Math.min(img.width, 1000);
-                        const canvasHeight = canvasWidth / aspectRatio;
-                        
-                        canvas.width = canvasWidth;
-                        canvas.height = canvasHeight;
-                        
+                        // Responsive: set canvas size to container, then redraw
+                        if (typeof resizeCanvasToContainer === 'function') {
+                            resizeCanvasToContainer();
+                        }
                         redrawCanvas();
                         // Enable download button after image is loaded
                         downloadPngBtn.disabled = false;
@@ -2281,8 +2302,20 @@
         // Initialize application
         async function initApp() {
             // Set up canvas and initial state
-            canvas.width = 1000;
-            canvas.height = 800;
+            function resizeCanvasToContainer() {
+                const container = canvas.parentElement;
+                if (container) {
+                    // Get computed style to account for padding/borders
+                    const rect = container.getBoundingClientRect();
+                    canvas.width = rect.width;
+                    canvas.height = rect.height;
+                }
+            }
+            resizeCanvasToContainer();
+            window.addEventListener('resize', () => {
+                resizeCanvasToContainer();
+                redrawCanvas();
+            });
 
             // Disable download button until background image is loaded
             downloadPngBtn.disabled = true;
@@ -2475,6 +2508,46 @@
         
          document.addEventListener('DOMContentLoaded', () => {
              initApp().catch(error => {console.error('Error initializing app:', error);});
+
+             // Sidebar toggle logic for mobile
+             const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+             const leftSidebar = document.getElementById('left-sidebar');
+             const rightSidebar = document.getElementById('right-sidebar');
+             let sidebarOpen = false;
+
+             function updateSidebarVisibility() {
+                 if (window.innerWidth < 768) {
+                     if (sidebarOpen) {
+                         leftSidebar.classList.remove('-translate-x-full');
+                         leftSidebar.classList.add('translate-x-0');
+                         rightSidebar.classList.remove('translate-x-full');
+                         rightSidebar.classList.add('translate-x-0');
+                     } else {
+                         leftSidebar.classList.add('-translate-x-full');
+                         leftSidebar.classList.remove('translate-x-0');
+                         rightSidebar.classList.add('translate-x-full');
+                         rightSidebar.classList.remove('translate-x-0');
+                     }
+                 } else {
+                     leftSidebar.classList.remove('-translate-x-full', 'translate-x-0');
+                     rightSidebar.classList.remove('translate-x-full', 'translate-x-0');
+                 }
+             }
+
+             sidebarToggleBtn?.addEventListener('click', () => {
+                 sidebarOpen = !sidebarOpen;
+                 updateSidebarVisibility();
+             });
+
+             window.addEventListener('resize', () => {
+                 if (window.innerWidth >= 768) {
+                     sidebarOpen = false;
+                 }
+                 updateSidebarVisibility();
+             });
+
+             // Initialize sidebar visibility
+             updateSidebarVisibility();
         });
     </script>
 </body></html>

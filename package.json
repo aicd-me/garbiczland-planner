@@ -1,6 +1,7 @@
 {
   "name": "garbiczland-planner",
   "version": "1.0.0",
+  "type": "module",
   "description": "A TypeScript-based planner for Garbiczland",
   "main": "dist/index.js",
   "scripts": {

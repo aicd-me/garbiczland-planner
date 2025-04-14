@@ -1,0 +1,136 @@
+[debug] [2025-04-14T04:57:02.475Z] ----------------------------------------------------------------------
+[debug] [2025-04-14T04:57:02.478Z] Command:       /nix/store/ixbb20farqh1f4fqbmsn6b1ixn8mc8ij-nodejs-20.18.1/bin/node /nix/store/b9a1wqzb1vkh5xd2mrp196csvbgv8j13-firebase-tools-14.0.1/lib/node_modules/firebase-tools/lib/bin/firebase.js init hosting
+[debug] [2025-04-14T04:57:02.479Z] CLI Version:   14.0.1
+[debug] [2025-04-14T04:57:02.479Z] Platform:      linux
+[debug] [2025-04-14T04:57:02.479Z] Node Version:  v20.18.1
+[debug] [2025-04-14T04:57:02.479Z] Time:          Mon Apr 14 2025 04:57:02 GMT+0000 (Coordinated Universal Time)
+[debug] [2025-04-14T04:57:02.480Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-04-14T04:57:02.488Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-04-14T04:57:02.488Z] > authorizing via signed-in user (mariuszkreft@gmail.com)
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /home/user/garbiczland-planner
+
+[info] 
+=== Project Setup
+[info] 
+[info] First, let's associate this project directory with a Firebase project.
+[info] You can create multiple project aliases by running firebase use --add, 
+[info] but for now we'll just set up a default project.
+[info] 
+[info] i  If you want to create a project in a Google Cloud organization or folder, please use "firebase projects:create" instead, and return to this command when you've created the project. 
+[debug] [2025-04-14T04:57:38.081Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:38.082Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:38.082Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-04-14T04:57:38.083Z] > authorizing via signed-in user (mariuszkreft@gmail.com)
+[debug] [2025-04-14T04:57:38.086Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects [none]
+[debug] [2025-04-14T04:57:38.086Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects {"projectId":"garbizland-planner","name":"garbizland-planner"}
+[debug] [2025-04-14T04:57:38.953Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects 200
+[debug] [2025-04-14T04:57:38.953Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects {"name":"operations/create_project.global.5700197324139040261"}
+[debug] [2025-04-14T04:57:38.956Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:38.956Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:38.956Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-04-14T04:57:38.956Z] > authorizing via signed-in user (mariuszkreft@gmail.com)
+[debug] [2025-04-14T04:57:38.957Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.5700197324139040261 [none]
+[debug] [2025-04-14T04:57:39.624Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.5700197324139040261 200
+[debug] [2025-04-14T04:57:39.625Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.5700197324139040261 {"name":"operations/create_project.global.5700197324139040261"}
+[debug] [2025-04-14T04:57:40.126Z] [Project Creation Poller] Retrying task index 0
+[debug] [2025-04-14T04:57:40.127Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:40.127Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:40.128Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-04-14T04:57:40.128Z] > authorizing via signed-in user (mariuszkreft@gmail.com)
+[debug] [2025-04-14T04:57:40.128Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.5700197324139040261 [none]
+[debug] [2025-04-14T04:57:40.309Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.5700197324139040261 200
+[debug] [2025-04-14T04:57:40.309Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.5700197324139040261 {"name":"operations/create_project.global.5700197324139040261"}
+[debug] [2025-04-14T04:57:41.310Z] [Project Creation Poller] Retrying task index 0
+[debug] [2025-04-14T04:57:41.311Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:41.311Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:41.311Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-04-14T04:57:41.312Z] > authorizing via signed-in user (mariuszkreft@gmail.com)
+[debug] [2025-04-14T04:57:41.312Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.5700197324139040261 [none]
+[debug] [2025-04-14T04:57:41.483Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.5700197324139040261 200
+[debug] [2025-04-14T04:57:41.483Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.5700197324139040261 {"name":"operations/create_project.global.5700197324139040261","metadata":{"@type":"type.googleapis.com/google.cloudresourcemanager.v1.ProjectCreationStatus","gettable":true,"ready":true},"done":true,"response":{"@type":"type.googleapis.com/google.cloudresourcemanager.v1.Project","projectNumber":"81680129416","projectId":"garbizland-planner","lifecycleState":"ACTIVE","name":"garbizland-planner","createTime":"2025-04-14T04:57:39.856178Z"}}
+[debug] [2025-04-14T04:57:41.485Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:41.485Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:41.485Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-04-14T04:57:41.486Z] > authorizing via signed-in user (mariuszkreft@gmail.com)
+[debug] [2025-04-14T04:57:41.486Z] >>> [apiv2][query] POST https://firebase.googleapis.com/v1beta1/projects/garbizland-planner:addFirebase [none]
+[debug] [2025-04-14T04:57:45.094Z] <<< [apiv2][status] POST https://firebase.googleapis.com/v1beta1/projects/garbizland-planner:addFirebase 200
+[debug] [2025-04-14T04:57:45.094Z] <<< [apiv2][body] POST https://firebase.googleapis.com/v1beta1/projects/garbizland-planner:addFirebase {"name":"operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx"}
+[debug] [2025-04-14T04:57:45.095Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:45.095Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:45.095Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-04-14T04:57:45.095Z] > authorizing via signed-in user (mariuszkreft@gmail.com)
+[debug] [2025-04-14T04:57:45.096Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx [none]
+[debug] [2025-04-14T04:57:51.374Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx 200
+[debug] [2025-04-14T04:57:51.375Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx {"name":"operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx"}
+[debug] [2025-04-14T04:57:51.875Z] [Add Firebase Poller] Retrying task index 0
+[debug] [2025-04-14T04:57:51.876Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:51.877Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:51.877Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-04-14T04:57:51.877Z] > authorizing via signed-in user (mariuszkreft@gmail.com)
+[debug] [2025-04-14T04:57:51.878Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx [none]
+[debug] [2025-04-14T04:57:52.338Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx 200
+[debug] [2025-04-14T04:57:52.338Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx {"name":"operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx"}
+[debug] [2025-04-14T04:57:53.340Z] [Add Firebase Poller] Retrying task index 0
+[debug] [2025-04-14T04:57:53.341Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:53.341Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:53.341Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-04-14T04:57:53.342Z] > authorizing via signed-in user (mariuszkreft@gmail.com)
+[debug] [2025-04-14T04:57:53.342Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx [none]
+[debug] [2025-04-14T04:57:54.096Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx 200
+[debug] [2025-04-14T04:57:54.096Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx {"name":"operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx"}
+[debug] [2025-04-14T04:57:56.099Z] [Add Firebase Poller] Retrying task index 0
+[debug] [2025-04-14T04:57:56.100Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:56.102Z] No OAuth tokens found
+[debug] [2025-04-14T04:57:56.102Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-04-14T04:57:56.102Z] > authorizing via signed-in user (mariuszkreft@gmail.com)
+[debug] [2025-04-14T04:57:56.102Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx [none]
+[debug] [2025-04-14T04:57:56.723Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx 200
+[debug] [2025-04-14T04:57:56.724Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx {"name":"operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx"}
+[debug] [2025-04-14T04:58:00.728Z] [Add Firebase Poller] Retrying task index 0
+[debug] [2025-04-14T04:58:00.729Z] No OAuth tokens found
+[debug] [2025-04-14T04:58:00.729Z] No OAuth tokens found
+[debug] [2025-04-14T04:58:00.729Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-04-14T04:58:00.729Z] > authorizing via signed-in user (mariuszkreft@gmail.com)
+[debug] [2025-04-14T04:58:00.730Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx [none]
+[debug] [2025-04-14T04:58:01.489Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx 200
+[debug] [2025-04-14T04:58:01.489Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx {"name":"operations/workflows/N2Y2NWJjNDMtNjMzNC00ODFiLWIyMjktNGY1MzhmMjhiM2Qx","done":true,"response":{"@type":"type.googleapis.com/google.firebase.service.v1beta1.FirebaseProject","projectId":"garbizland-planner","projectNumber":"81680129416","displayName":"garbizland-planner","name":"projects/garbizland-planner","resources":{"hostingSite":"garbizland-planner"}}}
+[info] 
+[info] 🎉🎉🎉 Your Firebase project is ready! 🎉🎉🎉
+[info] 
+[info] Project information:
+[info]    - Project ID: garbizland-planner
+[info]    - Project Name: garbizland-planner
+[info] 
+[info] Firebase console is available at
+[info] https://console.firebase.google.com/project/garbizland-planner/overview
+[info] i  Using project garbizland-planner (garbizland-planner) 
+[info] 
+=== Hosting Setup
+[debug] [2025-04-14T04:58:01.506Z] No OAuth tokens found
+[debug] [2025-04-14T04:58:01.506Z] No OAuth tokens found
+[debug] [2025-04-14T04:58:01.506Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-04-14T04:58:01.506Z] > authorizing via signed-in user (mariuszkreft@gmail.com)
+[debug] [2025-04-14T04:58:01.506Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/garbizland-planner [none]
+[debug] [2025-04-14T04:58:02.432Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/garbizland-planner 200
+[debug] [2025-04-14T04:58:02.433Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/garbizland-planner {"projectId":"garbizland-planner","projectNumber":"81680129416","displayName":"garbizland-planner","name":"projects/garbizland-planner","resources":{"hostingSite":"garbizland-planner"},"state":"ACTIVE","etag":"1_6ee3d0a1-c963-4948-b0e8-fe1841b27c65"}
+[debug] [2025-04-14T05:00:02.172Z] Error: Command failed: npx --yes create-next-app@"12 - 15.0" -e hello-world / --use-npm --ts
+    at genericNodeError (node:internal/errors:984:15)
+    at wrappedFn (node:internal/errors:538:14)
+    at checkExecSyncError (node:child_process:891:11)
+    at execSync (node:child_process:963:15)
+    at Object.init (/nix/store/b9a1wqzb1vkh5xd2mrp196csvbgv8j13-firebase-tools-14.0.1/lib/node_modules/firebase-tools/lib/frameworks/next/index.js:214:34)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async doSetup (/nix/store/b9a1wqzb1vkh5xd2mrp196csvbgv8j13-firebase-tools-14.0.1/lib/node_modules/firebase-tools/lib/init/features/hosting/index.js:120:13)
+    at async init (/nix/store/b9a1wqzb1vkh5xd2mrp196csvbgv8j13-firebase-tools-14.0.1/lib/node_modules/firebase-tools/lib/init/index.js:41:9)
+[error] 
+[error] Error: An unexpected error has occurred.
