@@ -79,24 +79,6 @@
       "active": false
     },
     {
-      "id": "member1",
-      "name": "Member 1",
-      "description": "Member 1 specific areas",
-      "active": false
-    },
-    {
-      "id": "member2",
-      "name": "Member 2",
-      "description": "Member 2 specific areas",
-      "active": false
-    },
-    {
-      "id": "member3",
-      "name": "Member 3",
-      "description": "Member 3 specific areas",
-      "active": false
-    },
-    {
       "id": "other_events",
       "name": "Other Events",
       "description": "Layout for other events",
