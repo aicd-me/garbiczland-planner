@@ -1738,6 +1738,17 @@
             redrawCanvas();
         }
 
+        function loadVersionsFromLocalStorage() {
+            const savedVersions = localStorage.getItem('garbiczlandVersions');
+            if (savedVersions) {
+                try {
+                    appState.versions = JSON.parse(savedVersions);
+                } catch (err) {
+                    console.error('Error parsing saved versions:', err);
+                }
+            }
+        }
+
         function deleteScenario(id) {
             // Prevent deleting the last scenario
             if (appState.scenarios.length <= 1) {
@@ -1850,11 +1861,25 @@
         // Function to import a version from the clipboard
         function importVersion() {
             const data = prompt('Paste version data here:');
-            if (data) {
-                try{
-                  console.log(data);
-                }catch(err){
-                      alert('Invalid version data.');
+            if (data && data.trim() !== '') {
+                try {
+                    const parsedData = JSON.parse(data);
+                    if (!parsedData.zoneItems || !parsedData.scenarios || !parsedData.shapes || !parsedData.usedColors || parsedData.currentScenario === undefined) {
+                        throw new Error('Invalid version data format.');
+                    }
+                    const newVersion = {
+                        timestamp: Date.now(),
+                        versionName: 'Imported Version',
+                        data: parsedData
+                    };
+                    appState.versions.push(newVersion);
+                    renderScenarios(); // Update the UI
+                    localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
+                    alert('Version imported successfully!');
+                } catch (err) {
+                    console.error('Failed to import version data: ', err);
+                    alert('Invalid version data.');
+                    
                 }
             }
         }
@@ -1986,8 +2011,7 @@
                     
                     if(parsedData.versions){
                         appState.versions = parsedData.versions;
-                    }
-
+                        const savedVersions = localStorage.getItem('garbiczlandVersions');
 
                     const img = new Image();
                         img.onload = function() {
@@ -2005,6 +2029,9 @@
                     renderZoneItems();
                     renderScenarios();
                 } catch (error) {
+                    if(appState.versions.length > 0){
+                        loadVersionsFromLocalStorage();
+                    }
                     console.error('Error loading saved data:', error);
                 }
             }
@@ -2012,6 +2039,8 @@
             // Draw initial canvas
             redrawCanvas();
             
+            loadVersionsFromLocalStorage();
+
             // Set up auto-save
             setInterval(() => {
                 const dataToSave = {
@@ -2025,7 +2054,9 @@
                 };
                 
                 localStorage.setItem('garbiczlandData', JSON.stringify(dataToSave));
-            }, 10000); // Auto-save every 10 seconds
+                localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
+            
+            }, 10000); 
         }
         
          document.addEventListener('DOMContentLoaded', () => {
