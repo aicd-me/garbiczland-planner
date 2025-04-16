@@ -224,6 +224,17 @@
             </div>
             
             <!-- Right Sidebar - Scenario Controls -->
+<!-- Version Management Sidebar -->
+<div class="sidebar bg-white shadow-sm w-1/4 border-l border-gray-200" id="version-sidebar">
+  <h2 class="section-title">Versions</h2>
+  <button id="save-version-btn" class="tool-button mb-4 w-full">
+    <i class="fas fa-save"></i> Save Current Version
+  </button>
+  <div id="version-list" class="space-y-2 mb-6"></div>
+  <div class="text-xs text-gray-500 mt-4">
+    <p>• Save, restore, delete, or share your planning versions</p>
+  </div>
+</div>
             <div class="sidebar bg-white shadow-sm w-1/4 border-l border-gray-200">
                 <h2 class="section-title">Scenarios</h2>
                 <button id="add-scenario-btn" class="tool-button mb-4 w-full">
@@ -300,6 +311,118 @@
             </div>
         </div>
 
+// --- Versioning API Client ---
+const VERSION_API = 'http://localhost:3001/api/versions';
+
+async function fetchVersions() {
+  const res = await fetch(VERSION_API);
+  return res.json();
+}
+
+async function saveVersion(name, description, data) {
+  const res = await fetch(VERSION_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description, data })
+  });
+  return res.json();
+}
+
+async function loadVersion(id) {
+  const res = await fetch(`${VERSION_API}/${id}`);
+  return res.json();
+}
+
+async function deleteVersion(id) {
+  const res = await fetch(`${VERSION_API}/${id}`, { method: 'DELETE' });
+  return res.json();
+}
+
+// --- Version Sidebar UI ---
+const versionSidebar = document.getElementById('version-sidebar');
+const versionList = document.getElementById('version-list');
+const saveVersionBtn = document.getElementById('save-version-btn');
+
+function renderVersionList(versions) {
+  versionList.innerHTML = '';
+  versions.forEach(v => {
+    const item = document.createElement('div');
+    item.className = 'scenario-item flex flex-col';
+    item.innerHTML = `
+      <div class="flex justify-between items-center">
+        <span class="font-semibold">${v.name}</span>
+        <div class="flex gap-2">
+          <button class="tool-button" title="Restore" onclick="restoreVersion('${v.id}')"><i class="fas fa-upload"></i></button>
+          <button class="tool-button" title="Share" onclick="shareVersion('${v.id}')"><i class="fas fa-link"></i></button>
+          <button class="tool-button" title="Delete" onclick="deleteVersionUI('${v.id}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+      <div class="text-xs text-gray-600">${v.description || ''} <span class="ml-2">${new Date(v.timestamp).toLocaleString()}</span></div>
+    `;
+    versionList.appendChild(item);
+  });
+}
+
+window.restoreVersion = async function(id) {
+  const v = await loadVersion(id);
+  if (v && v.data) {
+    Object.assign(appState, v.data);
+    renderZoneItems();
+    renderScenarios();
+    redrawCanvas();
+    alert('Version restored!');
+  }
+};
+
+window.shareVersion = function(id) {
+  const url = `${window.location.origin}${window.location.pathname}?version=${id}`;
+  navigator.clipboard.writeText(url);
+  alert('Shareable link copied to clipboard!');
+};
+
+window.deleteVersionUI = async function(id) {
+  if (confirm('Delete this version?')) {
+    await deleteVersion(id);
+    await refreshVersionList();
+  }
+};
+
+async function refreshVersionList() {
+  const versions = await fetchVersions();
+  renderVersionList(versions);
+}
+
+saveVersionBtn.addEventListener('click', async () => {
+  const name = prompt('Version name:');
+  if (!name) return;
+  const description = prompt('Description (optional):') || '';
+  const data = {
+    zoneItems: appState.zoneItems,
+    scenarios: appState.scenarios,
+    shapes: appState.shapes,
+    usedColors: appState.usedColors,
+    currentScenario: appState.currentScenario,
+    backgroundImageUrl: appState.backgroundImage ? appState.backgroundImage.src : null
+  };
+  await saveVersion(name, description, data);
+  await refreshVersionList();
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await refreshVersionList();
+  // If ?version=ID in URL, load that version
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('version')) {
+    const v = await loadVersion(params.get('version'));
+    if (v && v.data) {
+      Object.assign(appState, v.data);
+      renderZoneItems();
+      renderScenarios();
+      redrawCanvas();
+      alert('Loaded shared version!');
+    }
+  }
+});
     <script>
         // Main application state
         const appState = {
@@ -1557,7 +1680,7 @@
                 appState.selectedShape.points.forEach((point, index) => {
                     ctx.beginPath();
                     ctx.arc(point.x, point.y, 6, 0, Math.PI * 2);
-                    ctx.fillStyle = index === appState.selectedPoint ? '#ff0000' : '#ffffff';
+Yeah                    ctx.fillStyle = index === appState.selectedPoint ? '#ff0000' : '#ffffff';
                     ctx.fill();
                     ctx.strokeStyle = '#000000';
                     ctx.lineWidth = 2;
