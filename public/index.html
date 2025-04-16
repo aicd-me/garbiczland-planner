@@ -253,8 +253,8 @@
             
             <!-- Main Canvas Area -->
             <div class="flex-1 flex justify-center items-center bg-gray-50 p-2 sm:p-4 overflow-auto order-3 md:order-none">
-                <div class="w-full h-[40vh] sm:h-[60vh] md:h-[80vh] flex items-center justify-center">
-                    <canvas id="main-canvas" class="w-full h-full max-w-full max-h-full rounded shadow" style="background: #fff;"></canvas>
+                <div class="flex items-center justify-center">
+                    <canvas id="main-canvas" class="rounded shadow" style="background: #fff;"></canvas>
                 </div>
             </div>
             
@@ -408,6 +408,12 @@
             configLoaded: false,  // Track if config has been loaded
             versions: [],
             deleteButtonPosition: null, // Store position of delete button for hit testing
+            
+            // Zoom and pan state
+            zoomLevel: 1,
+            panOffset: { x: 0, y: 0 },
+            isPanning: false,
+            lastMousePos: { x: 0, y: 0 },
             
             colorPalette: [
                 '#FFFFAA', '#FFFF00', '#B2B200', '#FFA500', '#000000',
@@ -618,10 +624,9 @@
             const img = new Image();
             img.onload = function() {
                 appState.backgroundImage = img;
-                // Responsive: set canvas size to container, then redraw
-                if (typeof resizeCanvasToContainer === 'function') {
-                    resizeCanvasToContainer();
-                }
+                // Set canvas size to match image dimensions
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
                 redrawCanvas();
                 // Enable download button after image is loaded
                 downloadPngBtn.disabled = false;
@@ -1337,6 +1342,20 @@
             return null;
         }
         
+        // Helper function to adjust mouse coordinates based on zoom, pan, and image offset
+        function adjustCoordinates(rawX, rawY) {
+            // First, adjust for pan offset and zoom level
+            // We need to reverse the transformations applied in redrawCanvas
+            const adjustedX = (rawX - appState.panOffset.x) / appState.zoomLevel;
+            const adjustedY = (rawY - appState.panOffset.y) / appState.zoomLevel;
+            
+            // Return adjusted coordinates
+            return {
+                x: adjustedX,
+                y: adjustedY
+            };
+        }
+        
         // Draw a delete button for the selected shape
         function drawDeleteButton(shape) {
             // Calculate the center of the shape
@@ -1413,8 +1432,20 @@
             if (e.button === 2) return; // Handle right-click separately
 
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            // Get raw coordinates relative to canvas
+            let rawX = e.clientX - rect.left;
+            let rawY = e.clientY - rect.top;
+            
+            // Check if we're panning (middle mouse button or Shift+left click)
+            if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+                appState.isPanning = true;
+                appState.lastMousePos = { x: rawX, y: rawY };
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+            
+            // Adjust coordinates using helper function
+            const { x, y } = adjustCoordinates(rawX, rawY);
 
             // Allow shape/point manipulation in both modes
             const closest = findClosestPointAndLine(x, y);
@@ -1513,8 +1544,33 @@
         // Handle mouse move event
         function handleMouseMove(e) {
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            // Get raw coordinates relative to canvas
+            let rawX = e.clientX - rect.left;
+            let rawY = e.clientY - rect.top;
+            
+            // Check if we're panning
+            if (appState.isPanning) {
+                // Calculate how much the mouse has moved
+                const deltaX = rawX - appState.lastMousePos.x;
+                const deltaY = rawY - appState.lastMousePos.y;
+                
+                // Update the pan offset
+                appState.panOffset.x += deltaX;
+                appState.panOffset.y += deltaY;
+                
+                // Update the last mouse position
+                appState.lastMousePos = { x: rawX, y: rawY };
+                
+                // Set cursor style
+                canvas.style.cursor = 'grabbing';
+                
+                // Redraw the canvas with the new pan offset
+                redrawCanvas();
+                return;
+            }
+            
+            // Adjust coordinates using helper function
+            const { x, y } = adjustCoordinates(rawX, rawY);
 
             // Allow dragging when we have a selected shape and are dragging
             if (appState.selectedShape && appState.isDragging) {
@@ -1545,8 +1601,12 @@
             if (!appState.selectedShape) return; // Only if a shape is selected
 
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            // Get raw coordinates relative to canvas
+            let rawX = e.clientX - rect.left;
+            let rawY = e.clientY - rect.top;
+            
+            // Adjust coordinates using helper function
+            const { x, y } = adjustCoordinates(rawX, rawY);
 
             // Only allow adding to the selected shape
             const threshold = 10;
@@ -1584,6 +1644,12 @@
         
         // Handle mouse up event
         function handleMouseUp(e) {
+            // Reset panning state
+            if (appState.isPanning) {
+                appState.isPanning = false;
+                canvas.style.cursor = 'crosshair';
+            }
+            
             if (appState.isDragging) {
                 appState.isDragging = false;
                 
@@ -1604,8 +1670,12 @@
             e.preventDefault();
             
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            // Get raw coordinates relative to canvas
+            let rawX = e.clientX - rect.left;
+            let rawY = e.clientY - rect.top;
+            
+            // Adjust coordinates using helper function
+            const { x, y } = adjustCoordinates(rawX, rawY);
             
             // Check if we're interacting with an existing shape
             const closest = findClosestPointAndLine(x, y);
@@ -1649,6 +1719,7 @@
                 }
             }
             
+            
             // If not interacting with an existing shape, handle current shape being drawn
             // In draw mode, right-click to remove the last point
             if (appState.currentShape.length > 0) {
@@ -1661,6 +1732,32 @@
                 
                 redrawCanvas();
             }
+        }
+        
+        // Handle mouse wheel for zooming
+        function handleWheel(e) {
+            e.preventDefault();
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // Convert mouse position to canvas coordinates before zoom
+            const canvasX = (mouseX - appState.panOffset.x) / appState.zoomLevel;
+            const canvasY = (mouseY - appState.panOffset.y) / appState.zoomLevel;
+            
+            // Adjust zoom level based on wheel direction
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            appState.zoomLevel *= zoomFactor;
+            
+            // Limit zoom level to reasonable bounds
+            appState.zoomLevel = Math.max(0.1, Math.min(10, appState.zoomLevel));
+            
+            // Adjust pan offset to zoom toward/away from mouse position
+            appState.panOffset.x = mouseX - canvasX * appState.zoomLevel;
+            appState.panOffset.y = mouseY - canvasY * appState.zoomLevel;
+            
+            redrawCanvas();
         }
         
         // Handle keyboard events
@@ -1814,9 +1911,17 @@
         function redrawCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
+            // Save the current context state
+            ctx.save();
+            
+            // Apply zoom and pan transformations
+            ctx.translate(appState.panOffset.x, appState.panOffset.y);
+            ctx.scale(appState.zoomLevel, appState.zoomLevel);
+            
             // Draw background image if available
             if (appState.backgroundImage) {
-                ctx.drawImage(appState.backgroundImage, 0, 0, canvas.width, canvas.height);
+                // Draw the image at its natural size (1:1)
+                ctx.drawImage(appState.backgroundImage, 0, 0);
             }
             
             // Get visible shapes based on scenarios
@@ -1888,6 +1993,9 @@
                 // Draw delete button
                 drawDeleteButton(appState.selectedShape);
             }
+            
+            // Restore the context state
+            ctx.restore();
         }
         
         // Draw a shape on the canvas
@@ -2308,7 +2416,10 @@
                     // Get computed style to account for padding/borders
                     const rect = container.getBoundingClientRect();
                     canvas.width = rect.width;
-                    canvas.height = rect.height;
+                    
+                    // Set canvas height to full container height, but max 1080px
+                    const containerHeight = rect.height;
+                    canvas.height = Math.min(containerHeight, 1080);
                 }
             }
             resizeCanvasToContainer();
@@ -2342,6 +2453,7 @@
             canvas.addEventListener('mouseup', handleMouseUp);
             canvas.addEventListener('dblclick', handleCanvasDblClick);
             document.addEventListener('keydown', handleKeyDown);
+            canvas.addEventListener('wheel', handleWheel);
             
             uploadBgBtn.addEventListener('click', () => {
                 const input = document.createElement('input');
@@ -2459,8 +2571,8 @@
                     const img = new Image();
                         img.onload = function() {
                             appState.backgroundImage = img;
-                            canvas.width = img.width > 1000 ? 1000 : img.width;
-                            canvas.height = canvas.width * (img.height / img.width);
+                            // Don't modify canvas dimensions, just use the image as is
+                            // and let redrawCanvas handle the proper scaling
                             redrawCanvas();
                             // Enable download button after image is loaded
                             downloadPngBtn.disabled = false;
