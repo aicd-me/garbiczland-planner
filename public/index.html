@@ -1471,9 +1471,20 @@
                 deleteSelectedShape();
                 return;
             }
-            
             // Check if we're clicking on or manipulating an existing shape
             if (closest && closest.type === 'point') {
+                // Store the original shape state for undo before modifying
+                const originalShape = JSON.parse(JSON.stringify(closest.shape));
+                const shapeIndex = appState.shapes.indexOf(closest.shape);
+                
+                // Save the original state for undo
+                const action = {
+                    type: 'move_shape',
+                    shape: originalShape,
+                    shapeIndex: shapeIndex
+                };
+                appState.undoStack.push(action);
+                
                 // Clicked on a point: select for dragging
                 appState.selectedShape = closest.shape;
                 appState.selectedPoint = closest.index;
@@ -1511,6 +1522,17 @@
                 if (!zoneItem || !zoneItem.active) continue;
 
                 if (isPointInShape(x, y, shape)) {
+                    // Store the original shape state for undo before modifying
+                    const originalShape = JSON.parse(JSON.stringify(shape));
+                    
+                    // Save the original state for undo
+                    const action = {
+                        type: 'move_shape',
+                        shape: originalShape,
+                        shapeIndex: i
+                    };
+                    appState.undoStack.push(action);
+                    
                     appState.selectedShape = shape;
                     appState.selectedPoint = null;
                     appState.isDragging = true;
@@ -1668,16 +1690,7 @@
             
             if (appState.isDragging) {
                 appState.isDragging = false;
-                
-                // Save the move action for undo
-                if (appState.selectedShape) {
-                    const action = {
-                        type: 'move_shape',
-                        shape: JSON.parse(JSON.stringify(appState.selectedShape)),
-                        shapeIndex: appState.shapes.indexOf(appState.selectedShape)
-                    };
-                    appState.undoStack.push(action);
-                }
+                // We no longer need to save the move action here since we're saving it at the start of the drag
             }
         }
         
