@@ -348,7 +348,7 @@
                 </div>
                 <div class="flex justify-end mt-4">
                     <button id="cancel-version-btn" class="tool-button bg-gray-200 mr-2">Cancel</button>
-                    <button id="save-version-btn" class="tool-button bg-blue-500 hover:bg-blue-600">Save</button>
+                    <button id="save-version-name-btn" class="tool-button bg-blue-500 hover:bg-blue-600">Save</button>
                 </div>
             </div>
         </div>
@@ -397,6 +397,7 @@
             currentZoneItem: null,
             currentScenario: null,  // Track the currently selected scenario
             currentShape: [],
+            currentVersion: null, // Track the currently loaded version
             shapes: [],
             selectedShape: null,
             selectedPoint: null,
@@ -458,7 +459,7 @@
         const versionModal = document.getElementById('version-modal');
         const versionModalTitle = document.getElementById('version-modal-title');
         const versionNameInput = document.getElementById('version-name');
-        const saveVersionNameBtn = document.getElementById('save-version-btn');
+        const saveVersionNameBtn = document.getElementById('save-version-name-btn');
         const cancelVersionBtn = document.getElementById('cancel-version-btn');
         const modalCloseVersion = document.querySelector('.modal-close-version');
         
@@ -913,25 +914,41 @@
         function renderVersions() {
             versionsContainer.innerHTML = '';
             
+            // Add a "Save Current Version" button at the top
+            if (appState.currentVersion !== null) {
+                const saveCurrentBtn = document.createElement('button');
+                saveCurrentBtn.className = 'tool-button mb-4 w-full';
+                saveCurrentBtn.innerHTML = '<i class="fas fa-save"></i> Save Current Version';
+                saveCurrentBtn.title = 'Save changes to the current version';
+                saveCurrentBtn.onclick = () => saveCurrentVersion();
+                versionsContainer.appendChild(saveCurrentBtn);
+            }
+            
             if(appState.versions.length > 0){
                 appState.versions.forEach(version => {
                     const versionItem = document.createElement('div');
-                    versionItem.className = 'scenario-item';
+                    // Highlight the current version
+                    const isCurrentVersion = version.timestamp === appState.currentVersion;
+                    versionItem.className = `scenario-item ${isCurrentVersion ? 'bg-blue-100 font-semibold' : ''}`;
+                    
                     const nameSpan = document.createElement('span');
                     nameSpan.textContent = version.versionName;
                     
                     const controls = document.createElement('div');
                     controls.className = 'flex items-center';
                     
-                    // Load button
-                    const loadBtn = document.createElement('button');
-                    loadBtn.innerHTML = '<i class="fas fa-upload"></i>';
-                    loadBtn.className = 'zone-control mr-2';
-                    loadBtn.title = 'Load Version';
-                    loadBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        loadVersion(version);
-                    };
+                    // Load button (don't show for current version)
+                    if (!isCurrentVersion) {
+                        const loadBtn = document.createElement('button');
+                        loadBtn.innerHTML = '<i class="fas fa-upload"></i>';
+                        loadBtn.className = 'zone-control mr-2';
+                        loadBtn.title = 'Load Version';
+                        loadBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            loadVersion(version);
+                        };
+                        controls.appendChild(loadBtn);
+                    }
                     
                     // Edit name button
                     const editBtn = document.createElement('button');
@@ -963,7 +980,6 @@
                         deleteVersion(version);
                     };
                     
-                    controls.appendChild(loadBtn);
                     controls.appendChild(editBtn);
                     controls.appendChild(shareBtn);
                     controls.appendChild(deleteBtn);
@@ -2223,6 +2239,9 @@
                 appState.usedColors = JSON.parse(JSON.stringify(version.data.usedColors));
                 appState.currentScenario = version.data.currentScenario;
                 
+                // Set this as the current version
+                appState.currentVersion = version.timestamp;
+                
                 // Load background image if available in the version data
                 if (version.data.backgroundImageUrl) {
                     const img = new Image();
@@ -2236,11 +2255,42 @@
                     img.src = version.data.backgroundImageUrl;
                 }
                 
+                
                 renderZoneItems();
                 renderScenarios();
                 renderVersions();
                 redrawCanvas();
             }
+        }
+        
+        // Function to save changes to the current version
+        function saveCurrentVersion() {
+            if (appState.currentVersion === null) {
+                alert('No version is currently loaded.');
+                return;
+            }
+            
+            const version = appState.versions.find(v => v.timestamp === appState.currentVersion);
+            if (!version) {
+                alert('Current version not found.');
+                return;
+            }
+            
+            // Update the version data with the current state
+            version.data = {
+                zoneItems: JSON.parse(JSON.stringify(appState.zoneItems)),
+                scenarios: JSON.parse(JSON.stringify(appState.scenarios)),
+                shapes: JSON.parse(JSON.stringify(appState.shapes)),
+                usedColors: JSON.parse(JSON.stringify(appState.usedColors)),
+                currentScenario: appState.currentScenario,
+                backgroundImageUrl: appState.backgroundImage ? appState.backgroundImage.src : null,
+                versionName: version.versionName
+            };
+            
+            // Save to localStorage
+            localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
+            
+            alert(`Version "${version.versionName}" has been updated with your changes.`);
         }
 
         // Function to delete a version
@@ -2317,6 +2367,9 @@
             if (appState.backgroundImage && !versionDataCopy.backgroundImageUrl) {
                 versionDataCopy.backgroundImageUrl = appState.backgroundImage.src;
             }
+            
+            // Include the version name in the data
+            versionDataCopy.versionName = version.versionName;
             
             // Create a deeplink with the version data in the URL hash
             const versionData = JSON.stringify(versionDataCopy);
@@ -2402,8 +2455,9 @@
                         renderScenarios();
                         redrawCanvas();
                         
-                        // Create a new version with a unique name
-                        const versionName = getUniqueVersionName('Imported Version');
+                        // Use the original version name if available, otherwise use a default name
+                        const originalName = parsedData.versionName || 'Imported Version';
+                        const versionName = getUniqueVersionName(originalName);
                         
                         const newVersion = {
                             timestamp: Date.now(),
@@ -2412,6 +2466,8 @@
                         };
                         
                         appState.versions.push(newVersion);
+                        // Set as current version
+                        appState.currentVersion = newVersion.timestamp;
                         renderVersions();
                         localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
                         
@@ -2465,8 +2521,9 @@
                     throw new Error('Invalid version data format.');
                 }
                 
-                // Create a unique name
-                const uniqueName = getUniqueVersionName('Imported Version');
+                // Use the original version name if available, otherwise use a default name
+                const originalName = parsedData.versionName || 'Imported Version';
+                const uniqueName = getUniqueVersionName(originalName);
                 
                 const newVersion = {
                     timestamp: Date.now(),
@@ -2488,6 +2545,8 @@
                 }
                 
                 appState.versions.push(newVersion);
+                // Set as current version
+                appState.currentVersion = newVersion.timestamp;
                 renderVersions(); // Update the UI
                 localStorage.setItem('garbiczlandVersions', JSON.stringify(appState.versions));
                 
