@@ -2191,6 +2191,9 @@
             // Check for duplicate names and make unique
             const uniqueName = getUniqueVersionName(versionName);
             
+            // Include background image URL in the version data
+            const backgroundImageUrl = appState.backgroundImage ? appState.backgroundImage.src : null;
+            
             const newVersion = {
                 timestamp: Date.now(),
                 versionName: uniqueName,
@@ -2199,7 +2202,8 @@
                     scenarios: JSON.parse(JSON.stringify(appState.scenarios)),
                     shapes: JSON.parse(JSON.stringify(appState.shapes)),
                     usedColors: JSON.parse(JSON.stringify(appState.usedColors)),
-                    currentScenario: appState.currentScenario
+                    currentScenario: appState.currentScenario,
+                    backgroundImageUrl: backgroundImageUrl
                 }
             };
             
@@ -2218,6 +2222,19 @@
                 appState.shapes = JSON.parse(JSON.stringify(version.data.shapes));
                 appState.usedColors = JSON.parse(JSON.stringify(version.data.usedColors));
                 appState.currentScenario = version.data.currentScenario;
+                
+                // Load background image if available in the version data
+                if (version.data.backgroundImageUrl) {
+                    const img = new Image();
+                    img.onload = function() {
+                        appState.backgroundImage = img;
+                        redrawCanvas();
+                        // Enable download button after image is loaded
+                        downloadPngBtn.disabled = false;
+                        downloadPngBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    };
+                    img.src = version.data.backgroundImageUrl;
+                }
                 
                 renderZoneItems();
                 renderScenarios();
@@ -2293,17 +2310,55 @@
         
         // Function to share a version (copy deeplink to clipboard)
         function shareVersion(version) {
+            // Create a copy of the version data to avoid modifying the original
+            const versionDataCopy = JSON.parse(JSON.stringify(version.data));
+            
+            // Make sure the background image URL is included in the version data
+            if (appState.backgroundImage && !versionDataCopy.backgroundImageUrl) {
+                versionDataCopy.backgroundImageUrl = appState.backgroundImage.src;
+            }
+            
             // Create a deeplink with the version data in the URL hash
-            const versionData = JSON.stringify(version.data);
+            const versionData = JSON.stringify(versionDataCopy);
             const encodedData = encodeURIComponent(versionData);
             const deeplink = `${window.location.origin}${window.location.pathname}#version=${encodedData}`;
             
-            navigator.clipboard.writeText(deeplink).then(() => {
-                alert('Deeplink copied to clipboard! Share this link to share your version.');
-            }).catch(err => {
-                console.error('Failed to copy deeplink: ', err);
-                alert('Failed to copy deeplink to clipboard.');
-            });
+            // Copy to clipboard
+            try {
+                navigator.clipboard.writeText(deeplink).then(() => {
+                    alert('Deeplink copied to clipboard! Share this link to share your version.');
+                }).catch(err => {
+                    console.error('Failed to copy deeplink: ', err);
+                    fallbackCopyToClipboard(deeplink);
+                });
+            } catch (err) {
+                console.error('Clipboard API not available: ', err);
+                fallbackCopyToClipboard(deeplink);
+            }
+        }
+        
+        // Fallback method for copying to clipboard
+        function fallbackCopyToClipboard(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';  // Avoid scrolling to bottom
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    alert('Deeplink copied to clipboard! Share this link to share your version.');
+                } else {
+                    alert('Failed to copy deeplink. Please copy this URL manually: ' + text);
+                }
+            } catch (err) {
+                console.error('Fallback clipboard copy failed: ', err);
+                alert('Failed to copy deeplink. Please copy this URL manually: ' + text);
+            }
+            
+            document.body.removeChild(textArea);
         }
         
         // Function to check for a version in the URL hash and import it
@@ -2322,6 +2377,31 @@
                             throw new Error('Invalid version data format.');
                         }
                         
+                        // Load the version data directly into the application state
+                        appState.zoneItems = JSON.parse(JSON.stringify(parsedData.zoneItems));
+                        appState.scenarios = JSON.parse(JSON.stringify(parsedData.scenarios));
+                        appState.shapes = JSON.parse(JSON.stringify(parsedData.shapes));
+                        appState.usedColors = JSON.parse(JSON.stringify(parsedData.usedColors));
+                        appState.currentScenario = parsedData.currentScenario;
+                        
+                        // Load background image if available in the imported data
+                        if (parsedData.backgroundImageUrl) {
+                            const img = new Image();
+                            img.onload = function() {
+                                appState.backgroundImage = img;
+                                redrawCanvas();
+                                // Enable download button after image is loaded
+                                downloadPngBtn.disabled = false;
+                                downloadPngBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                            };
+                            img.src = parsedData.backgroundImageUrl;
+                        }
+                        
+                        // Update UI
+                        renderZoneItems();
+                        renderScenarios();
+                        redrawCanvas();
+                        
                         // Create a new version with a unique name
                         const versionName = getUniqueVersionName('Imported Version');
                         
@@ -2338,7 +2418,7 @@
                         // Clear the hash to avoid reimporting on refresh
                         window.location.hash = '';
                         
-                        alert(`Version "${versionName}" has been imported successfully!`);
+                        alert(`Version "${versionName}" has been imported and loaded successfully!`);
                     } catch (err) {
                         console.error('Failed to import version from URL: ', err);
                         alert('Invalid version data in URL.');
@@ -2393,6 +2473,19 @@
                     versionName: uniqueName,
                     data: parsedData
                 };
+                
+                // Load background image if available in the imported data
+                if (parsedData.backgroundImageUrl) {
+                    const img = new Image();
+                    img.onload = function() {
+                        appState.backgroundImage = img;
+                        redrawCanvas();
+                        // Enable download button after image is loaded
+                        downloadPngBtn.disabled = false;
+                        downloadPngBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    };
+                    img.src = parsedData.backgroundImageUrl;
+                }
                 
                 appState.versions.push(newVersion);
                 renderVersions(); // Update the UI
